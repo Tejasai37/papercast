@@ -86,26 +86,32 @@ This document provides step-by-step instructions for creating the project infras
 ---
 
 ## 5. Create Amazon Cognito User Pool (Authentication)
-1.  Search for "Cognito" in the top bar.
-2.  Click **Create user pool`.
-3.  **Step 1: Configure sign-in experience**:
-    -   Keep **User name** selected.
-    -   Click **Next`.
-4.  **Step 2: Configure security requirements**:
-    -   Keep **No MFA** (for development).
-    -   Click **Next`.
-5.  **Step 3: Configure sign-up experience**:
-    -   Keep defaults. Click **Next`.
-6.  **Step 4: Configure message delivery**:
-    -   Select **Send email with Cognito** (for simple testing).
-    -   Click **Next`.
-7.  **Step 5: Integrate your app**:
+1.  Search for "Cognito" > **Create user pool**.
+2.  **Step 1: Configure sign-in experience**:
+    -   **Authentication providers**: Select **Cognito user pool**.
+    -   **Cognito user pool sign-in options**: Check **User name**. 
+    -   Click **Next**.
+3.  **Step 2: Configure security requirements**:
+    -   **Password policy**: Keep **Cognito default**.
+    -   **Multi-factor authentication (MFA)**: Select **No MFA** (for development).
+    -   **User recovery**: Keep defaults.
+    -   Click **Next**.
+4.  **Step 3: Configure sign-up experience**:
+    -   **Self-service sign-up**: Keep **Enabled**.
+    -   **Attribute verification**: Keep defaults.
+    -   **Required attributes**: Click **Next**.
+5.  **Step 4: Configure message delivery**:
+    -   **Email**: Select **Send email with Cognito**.
+    -   Click **Next**.
+6.  **Step 5: Integrate your app**:
     -   **User pool name**: `Papercast-Users`.
-    -   **App client name**: `Papercast-Web-App`.
-    -   **Client secret**: Select **Don't generate a client secret** (easier for simple apps).
-    -   Click **Next`.
-8.  **Step 6: Review and create**:
-    -   Click **Create user pool`.
+    -   **Initial app client**: 
+        -   **App type**: Select **Public client**.
+        -   **App client name**: `Papercast-Web-App`.
+        -   **Client secret**: Select **Don't generate a client secret**.
+    -   Click **Next**.
+7.  **Step 6: Review and create**:
+    -   Scroll to bottom > **Create user pool**.
 
 ---
 
