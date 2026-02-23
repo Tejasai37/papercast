@@ -1,6 +1,9 @@
 import os
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, Form, Response
+from fastapi.responses import RedirectResponse
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 
 # Load environment variables from .env file
 load_dotenv()

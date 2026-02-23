@@ -12,7 +12,9 @@ class RealAWSService:
             "dynamodb_table": os.getenv("DYNAMODB_TABLE_NAME", "PapercastCache"),
             "user_pool_id": os.getenv("COGNITO_USER_POOL_ID"),
             "client_id": os.getenv("COGNITO_CLIENT_ID"),
-            "region": os.getenv("AWS_REGION", "us-east-1")
+            "region": os.getenv("AWS_REGION", "us-east-1"),
+            "aws_access_key": os.getenv("AWS_ACCESS_KEY_ID"),
+            "aws_secret_key": os.getenv("AWS_SECRET_ACCESS_KEY")
         }
 
         # 2. If a local config file exists, use it to fill in blanks (backward compatibility)
@@ -24,15 +26,22 @@ class RealAWSService:
                     if not self.config.get(key): # Only fill if environment variable is NOT set
                         self.config[key] = value
 
-        # 3. Initialize clients
-        self.s3 = boto3.client("s3", region_name=self.config["region"])
-        self.dynamodb = boto3.resource("dynamodb", region_name=self.config["region"])
+        # 3. Initialize clients explicitly with credentials
+        session_kwargs = {
+            "region_name": self.config["region"]
+        }
+        if self.config["aws_access_key"] and self.config["aws_secret_key"]:
+            session_kwargs["aws_access_key_id"] = self.config["aws_access_key"]
+            session_kwargs["aws_secret_access_key"] = self.config["aws_secret_key"]
+
+        self.s3 = boto3.client("s3", **session_kwargs)
+        self.dynamodb = boto3.resource("dynamodb", **session_kwargs)
         self.table = self.dynamodb.Table(self.config["dynamodb_table"])
-        self.cognito = boto3.client("cognito-idp", region_name=self.config["region"])
+        self.cognito = boto3.client("cognito-idp", **session_kwargs)
         
         # Bedrock & Polly
-        self.bedrock = boto3.client("bedrock-runtime", region_name=self.config["region"])
-        self.polly = boto3.client("polly", region_name=self.config["region"])
+        self.bedrock = boto3.client("bedrock-runtime", **session_kwargs)
+        self.polly = boto3.client("polly", **session_kwargs)
 
     # --- S3 (File Storage) ---
     def upload_audio(self, file_content: bytes, file_name: str) -> str:
