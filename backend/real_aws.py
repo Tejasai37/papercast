@@ -2,6 +2,9 @@
 import boto3
 import json
 import os
+import hmac
+import hashlib
+import base64
 from botocore.exceptions import ClientError
 
 class RealAWSService:
@@ -12,6 +15,7 @@ class RealAWSService:
             "dynamodb_table": os.getenv("DYNAMODB_TABLE_NAME", "PapercastCache"),
             "user_pool_id": os.getenv("COGNITO_USER_POOL_ID"),
             "client_id": os.getenv("COGNITO_CLIENT_ID"),
+            "client_secret": os.getenv("COGNITO_CLIENT_SECRET"),
             "region": os.getenv("AWS_REGION", "us-east-1"),
             "aws_access_key": os.getenv("AWS_ACCESS_KEY_ID"),
             "aws_secret_key": os.getenv("AWS_SECRET_ACCESS_KEY")
@@ -39,9 +43,21 @@ class RealAWSService:
         self.table = self.dynamodb.Table(self.config["dynamodb_table"])
         self.cognito = boto3.client("cognito-idp", **session_kwargs)
         
-        # Bedrock & Polly
         self.bedrock = boto3.client("bedrock-runtime", **session_kwargs)
         self.polly = boto3.client("polly", **session_kwargs)
+
+    def _get_secret_hash(self, username):
+        """Calculates the HMAC-SHA256 secret hash for Cognito"""
+        if not self.config["client_secret"]:
+            return None
+            
+        msg = username + self.config["client_id"]
+        dig = hmac.new(
+            str(self.config["client_secret"]).encode('utf-8'),
+            msg.encode('utf-8'),
+            digestmod=hashlib.sha256
+        ).digest()
+        return base64.b64encode(dig).decode()
 
     # --- S3 (File Storage) ---
     def upload_audio(self, file_content: bytes, file_name: str) -> str:
@@ -99,14 +115,20 @@ class RealAWSService:
     def authenticate_user(self, username, password):
         """Authenticates user with Cognito and returns tokens"""
         try:
+            auth_params = {
+                'USERNAME': username,
+                'PASSWORD': password
+            }
+            
+            secret_hash = self._get_secret_hash(username)
+            if secret_hash:
+                auth_params['SECRET_HASH'] = secret_hash
+
             response = self.cognito.admin_initiate_auth(
                 UserPoolId=self.config["user_pool_id"],
                 ClientId=self.config["client_id"],
                 AuthFlow='ADMIN_NO_SRP_AUTH',
-                AuthParameters={
-                    'USERNAME': username,
-                    'PASSWORD': password
-                }
+                AuthParameters=auth_params
             )
             return response['AuthenticationResult']
         except ClientError as e:
@@ -136,6 +158,18 @@ class RealAWSService:
         except ClientError as e:
             print(f"Cognito Sign-up Error: {e}")
             return None
+
+    def get_user_groups(self, username):
+        """Fetches the groups a user belongs to in Cognito"""
+        try:
+            response = self.cognito.admin_list_groups_for_user(
+                UserPoolId=self.config["user_pool_id"],
+                Username=username
+            )
+            return [group['GroupName'] for group in response.get('Groups', [])]
+        except ClientError as e:
+            print(f"Cognito Groups Error: {e}")
+            return []
 
 # Singleton Instance (Optional: but useful for FastAPI)
 # real_aws = RealAWSService()

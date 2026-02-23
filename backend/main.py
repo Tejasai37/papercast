@@ -27,10 +27,13 @@ async def login(request: Request, username: str = Form(...), password: str = For
         # Real Cognito Auth
         auth_result = aws_service.authenticate_user(username, password)
         if auth_result:
-            response = RedirectResponse(url="/admin" if username == "admin" else "/", status_code=303)
-            # In real app, we might store JWT in cookie or session
+            groups = aws_service.get_user_groups(username)
+            is_admin = "admins" in groups
+            
+            response = RedirectResponse(url="/admin" if is_admin else "/", status_code=303)
             response.set_cookie(key="session", value=username)
             response.set_cookie(key="id_token", value=auth_result['IdToken'])
+            response.set_cookie(key="is_admin", value="true" if is_admin else "false")
             return response
         else:
             return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid Cognito credentials"})
@@ -52,6 +55,7 @@ def logout(response: Response):
     response = RedirectResponse(url="/login", status_code=303)
     response.delete_cookie("session")
     response.delete_cookie("id_token")
+    response.delete_cookie("is_admin")
     return response
 
 @app.get("/signup")
@@ -125,7 +129,9 @@ async def process_link(request: Request, url: str = Form(...)):
 @app.get("/admin")
 def admin_dashboard(request: Request):
     user = request.cookies.get("session")
-    if user != "admin":
+    is_admin = request.cookies.get("is_admin") == "true"
+    
+    if not is_admin:
         return RedirectResponse(url="/")
     
     return templates.TemplateResponse("admin.html", {

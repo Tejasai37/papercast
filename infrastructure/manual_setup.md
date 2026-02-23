@@ -199,6 +199,25 @@ After setting up the AWS resources, you must configure your local application to
 
 ---
 
+## 11. Setting up Administrative Access
+The application uses **Cognito Groups** to determine who is an admin.
+
+1.  **Create admins Group**:
+    -   In your User Pool dashboard, click the **Groups** tab.
+    -   Click **Create group**.
+    -   **Group name**: `admins` (Must be exact!).
+    -   Click **Create group**.
+2.  **Promote a User**:
+    -   Click the **Users** tab.
+    -   Click on your username.
+    -   Click **Add user to group**.
+    -   Select `admins`.
+    -   Click **Add**.
+
+Now, when you log in with that user, the Papercast dashboard will automatically recognize you as an administrator!
+
+---
+
 ## Verification Checklist
 - [x] VPC created with 2 Public Subnets in different AZs?
 - [x] Auto-assign Public IP enabled for both subnets?

@@ -137,10 +137,30 @@ def create_cognito_resources(cognito):
             UserPoolId=user_pool_id,
             ClientName=f"{PROJECT_NAME}-Web-App",
             GenerateSecret=False,
-            ExplicitAuthFlows=['ALLOW_USER_PASSWORD_AUTH', 'ALLOW_REFRESH_TOKEN_AUTH', 'ALLOW_USER_SRP_AUTH']
+            ExplicitAuthFlows=[
+                'ALLOW_USER_PASSWORD_AUTH', 
+                'ALLOW_REFRESH_TOKEN_AUTH', 
+                'ALLOW_USER_SRP_AUTH',
+                'ALLOW_ADMIN_USER_PASSWORD_AUTH'
+            ]
         )
         client_id = client_response['UserPoolClient']['ClientId']
         print(f"App Client Created: {client_id}")
+
+        # Create admins Group
+        print("Creating admins Group...")
+        try:
+            cognito.create_group(
+                GroupName='admins',
+                UserPoolId=user_pool_id,
+                Description='Administrative users for Papercast'
+            )
+            print("admins Group Created.")
+        except ClientError as e:
+            if e.response['Error']['Code'] == 'GroupExistsException':
+                print("Admins Group already exists.")
+            else:
+                print(f"Error creating Admins group: {e}")
 
         return user_pool_id, client_id
     except ClientError as e:

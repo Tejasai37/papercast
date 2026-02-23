@@ -56,7 +56,35 @@ aws ec2 authorize-security-group-ingress --group-id $Ec2SgId --protocol tcp --po
 aws ec2 authorize-security-group-ingress --group-id $Ec2SgId --protocol tcp --port 80 --source-group $AlbSgId --region $Region
 Write-Host "SGs Created: ALB($AlbSgId), EC2($Ec2SgId)" -ForegroundColor Green
 
-# 6. ALB & Target Group
+# 6. S3 Bucket (Audio Storage)
+Write-Host "Creating S3 Bucket: $BucketName..."
+aws s3 mb "s3://$BucketName" --region $Region
+Write-Host "S3 Bucket Created" -ForegroundColor Green
+
+# 7. DynamoDB Table (Metadata Cache)
+Write-Host "Creating DynamoDB Table: $TableName..."
+aws dynamodb create-table `
+    --table-name $TableName `
+    --attribute-definitions AttributeName=ArticleID,AttributeType=S
+    --key-schema AttributeName=ArticleID,KeyType=HASH `
+    --billing-mode PAY_PER_REQUEST `
+    --region $Region
+Write-Host "DynamoDB Table Created" -ForegroundColor Green
+
+# 8. Cognito User Pool (Authentication)
+Write-Host "Creating Cognito User Pool..."
+$UserPoolResponse = aws cognito-idp create-user-pool --pool-name "$ProjectName-Users" --auto-verified-attributes email --region $Region | ConvertFrom-Json
+$UserPoolId = $UserPoolResponse.UserPool.Id
+
+Write-Host "Creating App Client..."
+$ClientResponse = aws cognito-idp create-user-pool-client --user-pool-id $UserPoolId --client-name "$ProjectName-Web-App" --no-generate-secret --explicit-auth-flows ALLOW_USER_PASSWORD_AUTH ALLOW_REFRESH_TOKEN_AUTH ALLOW_USER_SRP_AUTH ALLOW_ADMIN_USER_PASSWORD_AUTH --region $Region | ConvertFrom-Json
+$ClientId = $ClientResponse.UserPoolClient.ClientId
+
+Write-Host "Creating admins Group..."
+aws cognito-idp create-group --group-name "admins" --user-pool-id $UserPoolId --description "Administrative users for Papercast" --region $Region
+Write-Host "Cognito Resources Created: Pool($UserPoolId), Client($ClientId)" -ForegroundColor Green
+
+# 9. ALB & Target Group
 Write-Host "Creating ALB and Target Group..."
 $TgArn = aws elbv2 create-target-group --name "$ProjectName-TG" --protocol HTTP --port 80 --vpc-id $VpcId --target-type instance --query 'TargetGroups[0].TargetGroupArn' --output text --region $Region
 $AlbResponse = aws elbv2 create-load-balancer --name "$ProjectName-ALB" --subnets $SubnetAId $SubnetBId --security-groups $AlbSgId --query 'LoadBalancers[0].[LoadBalancerArn,DNSName]' --output text --region $Region
