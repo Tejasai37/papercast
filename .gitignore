@@ -1,0 +1,35 @@
+# Standard Python GitIgnore
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.env
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+
+# OS Junk
+.DS_Store
+Thumbs.db
+
+# Project Specific
+node_modules/
+dist/
+build/
+*.mp3
+*.wav
+article_cache/
+audiocache/
+*.json
+!backend/local_cache.json
+!infrastructure/aws_config.json
+!.env.example
+
+# IDEs
+.vscode/
+.idea/
+.gemini/

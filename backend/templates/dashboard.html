@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row align-items-center py-4 mb-4 border-bottom">
+    <div class="col-md-6">
+        <h1 class="h2 fw-bold mb-0">Member Dashboard</h1>
+        <p class="text-muted small mb-0">Welcome back, <span class="text-accent">{{ user }}</span>. Your radio is ready.
+        </p>
+    </div>
+    <div class="col-md-6 text-md-end mt-3 mt-md-0">
+        <!-- Dashboard Toolbar -->
+        <div class="btn-group shadow-sm">
+            <button class="btn btn-outline-secondary btn-sm px-3" data-bs-toggle="modal"
+                data-bs-target="#customLinkModal">
+                <i class="bi bi-plus-circle me-1"></i> Custom Link
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="mb-5">
+    <h3 class="h5 mb-4 text-secondary text-uppercase ls-wide">1. Select a Category</h3>
+    <div class="d-flex flex-wrap gap-2 mb-4">
+        {% for cat in ['general', 'technology', 'business', 'entertainment', 'health', 'science', 'sports'] %}
+        <a href="/dashboard?category={{ cat }}"
+            class="btn {{ 'btn-accent' if current_category|lower == cat else 'btn-outline-secondary' }} btn-sm px-4 rounded-pill">
+            {{ cat | capitalize }}
+        </a>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-12">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h3 class="h5 mb-0 text-secondary text-uppercase ls-wide">2. Top 5 Headlines: {{ current_category }}</h3>
+            <span class="badge bg-light text-dark border">{{ news|length }} Articles</span>
+        </div>
+
+        <div class="row g-4" id="news-container">
+            {% for article in news %}
+            <div class="col-md-12">
+                <div class="news-snippet h-100 p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <div class="news-meta mb-2">
+                                <span class="badge bg-accent-soft text-accent">{{ article.source }}</span> &bull;
+                                <span>{{ article.time[:10] }}</span>
+                            </div>
+                            <h4 class="h5 fw-bold mb-2">{{ article.title }}</h4>
+                            <p class="text-secondary small mb-3">{{ article.content[:200] }}...</p>
+                        </div>
+                        <div class="col-md-4 text-md-end">
+                            <button class="btn btn-primary px-4 py-2" onclick="generateAudio('{{ article.id }}')">
+                                <i class="bi bi-broadcast me-2"></i> Listen to Podcast
+                            </button>
+                        </div>
+                    </div>
+                    <div id="player-{{ article.id }}" class="mt-4 d-none">
+                        <!-- Vintage Player injected here -->
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Custom Link Modal -->
+<div class="modal fade" id="customLinkModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content news-snippet p-4" style="border: none;">
+            <div class="modal-header border-bottom pb-3">
+                <h5 class="modal-title fw-bold">Generate from Link</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="/api/process_link" method="POST" class="mt-4">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Paste Article URL</label>
+                    <input type="url" name="url" class="form-control" placeholder="https://example.com/news-story"
+                        required>
+                    <div class="form-text small">Our AI will extract, summarize, and narrate the content for you.</div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 py-2">
+                    <i class="bi bi-stars"></i> Magic Broadcast
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

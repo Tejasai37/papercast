@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+jinja2
+python-multipart
+requests
+boto3
+gunicorn
+python-dotenv

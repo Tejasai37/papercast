@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h2 class="mb-4">Admin Dashboard</h2>
+        <div class="row g-4">
+            <!-- Stat Card 1 -->
+            <div class="col-md-3">
+                <div class="news-snippet text-center h-100 py-4">
+                    <h6 class="text-uppercase text-muted ls-1">Total Users</h6>
+                    <h1 class="display-4 fw-bold mb-0">{{ stats.total_users }}</h1>
+                </div>
+            </div>
+            <!-- Stat Card 2 -->
+            <div class="col-md-3">
+                <div class="news-snippet text-center h-100 py-4">
+                    <h6 class="text-uppercase text-muted ls-1">Active Sessions</h6>
+                    <h1 class="display-4 fw-bold mb-0 text-accent">{{ stats.active_sessions }}</h1>
+                </div>
+            </div>
+            <!-- Stat Card 3 -->
+            <div class="col-md-3">
+                <div class="news-snippet text-center h-100 py-4">
+                    <h6 class="text-uppercase text-muted ls-1">Articles Generated</h6>
+                    <h1 class="display-4 fw-bold mb-0">{{ stats.articles_generated }}</h1>
+                </div>
+            </div>
+            <!-- Stat Card 4 -->
+            <div class="col-md-3">
+                <div class="news-snippet text-center h-100 py-4">
+                    <h6 class="text-uppercase text-muted ls-1">Est. API Cost</h6>
+                    <h1 class="display-4 fw-bold mb-0 text-danger">{{ stats.api_cost }}</h1>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="news-snippet">
+            <h4 class="mb-3 border-bottom pb-2">Recent Activity</h4>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item bg-transparent px-0 py-2 d-flex justify-content-between">
+                    <span><i class="bi bi-person-plus me-2"></i> New user signup:
+                        <strong>jdoe@example.com</strong></span>
+                    <small class="text-muted">2 mins ago</small>
+                </li>
+                <li class="list-group-item bg-transparent px-0 py-2 d-flex justify-content-between">
+                    <span><i class="bi bi-mic me-2"></i> Audio generated: <strong>"AI Breakthroughs
+                            2025"</strong></span>
+                    <small class="text-muted">5 mins ago</small>
+                </li>
+                <li class="list-group-item bg-transparent px-0 py-2 d-flex justify-content-between">
+                    <span><i class="bi bi-exclamation-triangle me-2 text-warning"></i> API Rate Limit Warning
+                        (Polly)</span>
+                    <small class="text-muted">1 hour ago</small>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="news-snippet bg-light">
+            <h5 class="mb-3">Quick Actions</h5>
+            <div class="d-grid gap-2">
+                <button class="btn btn-primary btn-sm"><i class="bi bi-gear-fill me-2"></i> System Settings</button>
+                <button class="btn btn-outline-primary btn-sm"><i class="bi bi-people-fill me-2"></i> User
+                    Management</button>
+                <button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash-fill me-2"></i> Clear Audio
+                    Cache</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
