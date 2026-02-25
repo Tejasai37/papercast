@@ -36,8 +36,7 @@ build/
 article_cache/
 audiocache/
 *.json
-!backend/local_cache.json
-!infrastructure/aws_config.json
+# (Whitelisting .env.example already handled above)
 
 # Tooling/IDE
 .vscode/
