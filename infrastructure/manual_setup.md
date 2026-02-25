@@ -297,10 +297,9 @@ git clone [YOUR_REPO_URL] papercast
 cd papercast
 
 # Setup Virtual Environment
-python3.11 -m venv venv
-source venv/bin/activate
+python3.11 -m venv papercast_venv
+source papercast_venv/bin/activate
 pip install -r requirements.txt
-pip install gunicorn
 ```
 
 ### 12.4 Configure Environment
@@ -336,8 +335,8 @@ After=network.target
 User=ec2-user
 Group=ec2-user
 WorkingDirectory=/home/ec2-user/papercast
-Environment="PATH=/home/ec2-user/papercast/venv/bin"
-ExecStart=/home/ec2-user/papercast/venv/bin/gunicorn --workers 3 --bind 0.0.0.0:8000 backend.main:app -k uvicorn.workers.UvicornWorker
+Environment="PATH=/home/ec2-user/papercast/papercast_venv/bin"
+ExecStart=/home/ec2-user/papercast/papercast_venv/bin/gunicorn --workers 3 --bind 0.0.0.0:8000 backend.main:app -k uvicorn.workers.UvicornWorker
 
 [Install]
 WantedBy=multi-user.target
@@ -372,6 +371,34 @@ server {
 sudo systemctl restart nginx
 sudo systemctl enable nginx
 ```
+
+---
+
+## 14. Pausing the Station (Cost Savings)
+If you are not using the app and want to ensure 0% chance of charges, follow these steps to "Hibernate" your setup without losing your manual installation.
+
+### 14.1 To STOP the App
+1.  **Suspend ASG**: 
+    - Go to **Auto Scaling Groups** > Select `Papercast-ASG`.
+    - Go to the **Details** tab > **Advanced configurations** > **Edit**.
+    - Find **Suspended processes** and select: `Launch` and `Terminate`.
+    - Click **Update**. (This prevents AWS from trying to "fix" the server when you stop it).
+2.  **Stop the Instance**:
+    - Go to **EC2 Instances** > Select your `Papercast-Node`.
+    - **Instance state** > **Stop instance**.
+
+### 14.2 To START the App
+1.  **Start the Instance**:
+    - Go to **EC2 Instances** > Select your `Papercast-Node`.
+    - **Instance state** > **Start instance**.
+2.  **Resume ASG**:
+    - Go to **Auto Scaling Groups** > Select `Papercast-ASG` > **Details** > **Edit**.
+    - **Remove** the `Launch` and `Terminate` from Suspended processes.
+    - Click **Update**.
+3.  **Check IP**: 
+    - **Note**: When you Stop/Start an instance, AWS usually assigns it a **new Public IP Address**.
+    - **Action**: If you connect via SSH (Option B), you will need to copy the *new* IP from the EC2 Dashboard.
+    - **Action**: For the web app itself, always use the **ALB DNS Name**. It never changes, even when the server restarts!
 
 ---
 
