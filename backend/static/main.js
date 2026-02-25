@@ -20,10 +20,14 @@ async function generateAudio(articleId) {
 
         const data = await response.json();
 
-        // Success: Inject Custom Vintage Player HTML
+        // Success: Inject Custom Vintage Player HTML + Insights
         playerContainer.classList.remove('d-none');
+        
+        // Format Key Points as bullets
+        const keyPointsHtml = data.key_points ? data.key_points.map(p => `<li>${p}</li>`).join('') : '';
+
         playerContainer.innerHTML = `
-            <div class="vintage-player">
+            <div class="vintage-player mb-3">
                 <div class="player-controls">
                     <button class="btn-play" id="play-btn-${articleId}" onclick="togglePlay('${articleId}')">
                         <i class="bi bi-play-fill"></i>
@@ -43,6 +47,21 @@ async function generateAudio(articleId) {
                     onloadedmetadata="initDuration('${articleId}')"
                     onended="resetPlayer('${articleId}')"></audio>
             </div>
+
+            <!-- AI Insights Section -->
+            <div class="news-snippet border-0 bg-light p-3 mt-3 shadow-sm" style="border-left: 4px solid var(--accent-color) !important;">
+                <h6 class="text-uppercase fw-bold text-accent mb-2 small"><i class="bi bi-journal-text me-2"></i> TLDR</h6>
+                <p class="fw-bold mb-3">${data.tldr || 'No short summary available.'}</p>
+
+                <h6 class="text-uppercase fw-bold text-muted mb-2 small">Full Summary</h6>
+                <p class="small mb-3 text-secondary">${data.summary || 'No detailed summary available.'}</p>
+
+                <h6 class="text-uppercase fw-bold text-muted mb-2 small">Key Facts</h6>
+                <ul class="small text-secondary ps-3 mb-0">
+                    ${keyPointsHtml || '<li>No key points available.</li>'}
+                </ul>
+            </div>
+            
             <div class="alert alert-success mt-2 py-1 small text-center bg-transparent border-0 text-muted">
                 <i class="bi bi-check-circle"></i> Broadcast Ready
             </div>

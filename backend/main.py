@@ -13,6 +13,9 @@ app = FastAPI()
 app.mount("/static", StaticFiles(directory="backend/static"), name="static")
 templates = Jinja2Templates(directory="backend/templates")
 
+from backend.news_service import news_service
+from backend.news_service import news_service
+
 @app.get("/login")
 def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
@@ -21,34 +24,21 @@ def login_page(request: Request):
 # Validates user and sets cookie
 @app.post("/login")
 async def login(request: Request, username: str = Form(...), password: str = Form(...)):
-    aws_service = get_aws_service()
+    aws_service = RealAWSService()
     
-    if USE_REAL_AWS:
-        # Real Cognito Auth
-        auth_result = aws_service.authenticate_user(username, password)
-        if auth_result:
-            groups = aws_service.get_user_groups(username)
-            is_admin = "admins" in groups
-            
-            response = RedirectResponse(url="/admin" if is_admin else "/", status_code=303)
-            response.set_cookie(key="session", value=username)
-            response.set_cookie(key="id_token", value=auth_result['IdToken'])
-            response.set_cookie(key="is_admin", value="true" if is_admin else "false")
-            return response
-        else:
-            return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid Cognito credentials"})
+    # Real Cognito Auth
+    auth_result = aws_service.authenticate_user(username, password)
+    if auth_result:
+        groups = aws_service.get_user_groups(username)
+        is_admin = "admins" in groups
+        
+        response = RedirectResponse(url="/admin" if is_admin else "/", status_code=303)
+        response.set_cookie(key="session", value=username)
+        response.set_cookie(key="id_token", value=auth_result['IdToken'])
+        response.set_cookie(key="is_admin", value="true" if is_admin else "false")
+        return response
     else:
-        # Mock Logic
-        if username == "admin" and password == "admin":
-            response = RedirectResponse(url="/admin", status_code=303)
-            response.set_cookie(key="session", value="admin")
-            return response
-        elif username == "user" and password == "user":
-            response = RedirectResponse(url="/", status_code=303)
-            response.set_cookie(key="session", value="user")
-            return response
-        else:
-            return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid mock credentials"})
+        return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid Cognito credentials"})
 
 @app.get("/logout")
 def logout(response: Response):
@@ -64,16 +54,12 @@ def signup_page(request: Request):
 
 @app.post("/signup")
 async def signup(request: Request, username: str = Form(...), password: str = Form(...), email: str = Form(...)):
-    aws_service = get_aws_service()
-    if USE_REAL_AWS:
-        success = aws_service.sign_up_user(username, password, email)
-        if success:
-            return RedirectResponse(url="/login?msg=Signup+successful", status_code=303)
-        else:
-            return templates.TemplateResponse("signup.html", {"request": request, "error": "Cognito signup failed"})
+    aws_service = RealAWSService()
+    success = aws_service.sign_up_user(username, password, email)
+    if success:
+        return RedirectResponse(url="/login?msg=Signup+successful", status_code=303)
     else:
-        # Mock signup simply redirects
-        return RedirectResponse(url="/login?msg=Mock+Signup+successful", status_code=303)
+        return templates.TemplateResponse("signup.html", {"request": request, "error": "Cognito signup failed"})
 
 @app.get("/")
 def landing_page(request: Request):
@@ -83,20 +69,23 @@ def landing_page(request: Request):
     return templates.TemplateResponse("landing.html", {"request": request})
 
 @app.get("/dashboard")
-def dashboard(request: Request, category: str = "general"):
+def dashboard(request: Request, category: str = "general", q: str = None, language: str = "en", sort_by: str = "relevancy"):
     user = request.cookies.get("session")
     if not user:
         return RedirectResponse(url="/login")
         
-    from backend.news_service import news_service
-    from backend.mock_data import MOCK_NEWS_DATA
+    if q:
+        # Keyword Search Mode
+        news_articles = news_service.search_news(query=q, language=language, sort_by=sort_by)
+        display_title = f'Results for "{q}"'
+    else:
+        # Category/Headline Mode
+        news_articles = news_service.get_top_headlines(category=category)
+        display_title = category.capitalize()
     
-    # Try to fetch real news
-    news_articles = news_service.get_top_headlines(category=category)
-    
-    # Fallback to mock if API key is missing or error occurred
+    # Fallback to empty list if API fails
     if not news_articles:
-        news_articles = MOCK_NEWS_DATA["articles"]
+        news_articles = []
     
     # User specifically requested TOP FIVE
     top_five = news_articles[:5]
@@ -105,7 +94,8 @@ def dashboard(request: Request, category: str = "general"):
         "request": request, 
         "user": user,
         "news": top_five,
-        "current_category": category.capitalize()
+        "current_category": display_title,
+        "search_query": q or ""
     })
 
 @app.post("/api/process_link")
@@ -134,62 +124,86 @@ def admin_dashboard(request: Request):
     if not is_admin:
         return RedirectResponse(url="/")
     
+    aws_service = RealAWSService()
+    stats = aws_service.get_admin_metrics()
+    
+    # Add a pseudo-metric for active sessions if needed, or just let it be
+    stats["active_sessions"] = "Local Dev" # Or some other indicator
+    
     return templates.TemplateResponse("admin.html", {
         "request": request, 
         "user": user,
-        "stats": {
-            "total_users": 142,
-            "active_sessions": 23,
-            "articles_generated": 89,
-            "api_cost": "$4.20"
-        }
+        "stats": stats
     })
 
 
-# Service Selector logic
-USE_REAL_AWS = os.getenv("USE_REAL_AWS", "false").lower() == "true"
-
-def get_aws_service():
-    if USE_REAL_AWS:
-        from backend.real_aws import RealAWSService
-        return RealAWSService()
-    else:
-        from backend.mock_aws import mock_aws
-        return mock_aws
+from backend.real_aws import RealAWSService
 
 @app.post("/api/generate_audio/{article_id}")
-async def generate_audio(article_id: str):
+async def generate_audio(request: Request, article_id: str):
     """
-    Endpoint to generate audio with Caching (Mock or Real).
+    Endpoint to generate audio with Bedrock Summarization and Polly TTS.
     """
-    aws_service = get_aws_service()
+    user = request.cookies.get("session", "anonymous")
+    aws_service = RealAWSService()
     
-    # 1. Check Cache (DynamoDB)
+    # 1. Check Cache (S3/DynamoDB)
     cached_data = aws_service.get_article_metadata(article_id)
-    if cached_data:
+    if cached_data and cached_data.get("audio_url"):
         return {"audio_url": cached_data["audio_url"], "status": "cached"}
 
-    # 2. Simulate/Perform Generation
-    if USE_REAL_AWS:
-        # In a real app, this would call Bedrock/Polly
-        # For now, we'll still simulate the delay but use real S3/DynamoDB
-        import asyncio
-        await asyncio.sleep(2)
-        
-        # Mock file content for testing real S3
-        mock_content = b"This is a simulated audio file content."
-        file_name = f"{article_id}.wav"
-        
-        audio_url = aws_service.upload_audio(mock_content, file_name)
-    else:
-        import asyncio
-        await asyncio.sleep(2)  # Simulate processing delay
-        audio_url = "/static/mock.wav"
+    # 2. Get Article Content
+    article = news_service.get_article_by_id(article_id)
     
-    # 3. Update Cache (DynamoDB)
+    if not article:
+        return {"error": "Article not found", "status": "failed"}
+
+    content = article.get("content", "No content available.")
+    
+    # 3. Perform Generation
+    # A. Summarize with Bedrock (Returns dict: script, summary, key_points, tldr)
+    insights = aws_service.summarize_article(content)
+    
+    # B. Convert to Speech with Polly (Using the radio script)
+    audio_bytes = aws_service.generate_speech(insights['script'])
+    if not audio_bytes:
+        return {"error": "Polly generation failed", "status": "failed"}
+    
+    # C. Upload to S3
+    file_name = f"{article_id}.mp3"
+    audio_url = aws_service.upload_audio(audio_bytes, file_name)
+    
+    # 4. Update Cache (DynamoDB) with Expanded Metadata
     aws_service.save_article_metadata(article_id, {
         "audio_url": audio_url,
-        "status": "completed"
-    })
+        "status": "completed",
+        "title": article.get("title"),
+        "source": article.get("source"),
+        "time": article.get("time"),
+        "summary": insights.get("summary", ""),
+        "key_points": insights.get("key_points", []),
+        "tldr": insights.get("tldr", "")
+    }, user_id=user)
     
-    return {"audio_url": audio_url, "status": "generated"}
+    return {
+        "audio_url": audio_url, 
+        "status": "generated",
+        "summary": insights.get("summary"),
+        "key_points": insights.get("key_points"),
+        "tldr": insights.get("tldr")
+    }
+
+@app.get("/library")
+def library_page(request: Request):
+    user = request.cookies.get("session")
+    if not user:
+        return RedirectResponse(url="/login")
+    
+    aws_service = RealAWSService()
+    podcasts = aws_service.get_user_library(user)
+    
+    return templates.TemplateResponse("library.html", {
+        "request": request,
+        "user": user,
+        "podcasts": podcasts
+    })

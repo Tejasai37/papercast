@@ -24,7 +24,10 @@
             <a class="navbar-brand fw-bold" href="/{{ 'dashboard' if user else '' }}">Papercast</a>
             <div class="navbar-nav ms-auto">
                 <a class="nav-link" href="/{{ 'dashboard' if user else '' }}">Home</a>
-                {% if user == "admin" %}
+                {% if user %}
+                <a class="nav-link" href="/library">My Library</a>
+                {% endif %}
+                {% if request.cookies.get('is_admin') == 'true' %}
                 <a class="nav-link" href="/admin">Admin Panel</a>
                 {% endif %}
                 {% if user %}

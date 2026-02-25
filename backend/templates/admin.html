@@ -3,7 +3,10 @@
 {% block content %}
 <div class="row mb-4">
     <div class="col-md-12">
-        <h2 class="mb-4">Admin Dashboard</h2>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="mb-0">Admin Dashboard</h2>
+            <span class="badge bg-success"><i class="bi bi-shield-check me-1"></i> Production Mode (AWS)</span>
+        </div>
         <div class="row g-4">
             <!-- Stat Card 1 -->
             <div class="col-md-3">
@@ -40,22 +43,21 @@
 <div class="row">
     <div class="col-md-8">
         <div class="news-snippet">
-            <h4 class="mb-3 border-bottom pb-2">Recent Activity</h4>
+            <h4 class="mb-3 border-bottom pb-2">System Status</h4>
             <ul class="list-group list-group-flush">
                 <li class="list-group-item bg-transparent px-0 py-2 d-flex justify-content-between">
-                    <span><i class="bi bi-person-plus me-2"></i> New user signup:
-                        <strong>jdoe@example.com</strong></span>
-                    <small class="text-muted">2 mins ago</small>
+                    <span><i class="bi bi-cloud-check-fill me-2 text-success"></i> Amazon Bedrock:
+                        <strong>Operational</strong></span>
+                    <small class="text-muted">Live</small>
                 </li>
                 <li class="list-group-item bg-transparent px-0 py-2 d-flex justify-content-between">
-                    <span><i class="bi bi-mic me-2"></i> Audio generated: <strong>"AI Breakthroughs
-                            2025"</strong></span>
-                    <small class="text-muted">5 mins ago</small>
+                    <span><i class="bi bi-mic-fill me-2 text-primary"></i> AWS Polly:
+                        <strong>Operational</strong></span>
+                    <small class="text-muted">Live</small>
                 </li>
                 <li class="list-group-item bg-transparent px-0 py-2 d-flex justify-content-between">
-                    <span><i class="bi bi-exclamation-triangle me-2 text-warning"></i> API Rate Limit Warning
-                        (Polly)</span>
-                    <small class="text-muted">1 hour ago</small>
+                    <span><i class="bi bi-database-check me-2"></i> DynamoDB Cache: <strong>Active</strong></span>
+                    <small class="text-muted">Syncing</small>
                 </li>
             </ul>
         </div>

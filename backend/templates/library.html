@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row align-items-center py-4 mb-4 border-bottom">
+    <div class="col-md-6">
+        <h1 class="h2 fw-bold mb-0">Papercast Library</h1>
+        <p class="text-muted small mb-0">Your personal archive of AI-narrated news.</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    {% if podcasts %}
+    {% for podcast in podcasts %}
+    <div class="col-md-12">
+        <div class="news-snippet p-4">
+            <div class="row align-items-center">
+                <div class="col-md-7">
+                    <div class="news-meta mb-2">
+                        <span class="badge bg-accent-soft text-accent">{{ podcast.source }}</span> &bull;
+                        <span>{{ podcast.time[:10] if podcast.time else 'Archived' }}</span>
+                    </div>
+                    <h4 class="h5 fw-bold mb-2">{{ podcast.title }}</h4>
+
+                    <!-- AI Insights Section -->
+                    <div class="border-0 bg-light p-3 mt-3 shadow-sm"
+                        style="border-left: 4px solid var(--accent-color) !important; border-radius: 4px;">
+                        <h6 class="text-uppercase fw-bold text-accent mb-2 small"><i
+                                class="bi bi-journal-text me-2"></i> TLDR</h6>
+                        <p class="fw-bold mb-3 small">{{ podcast.tldr or 'No short summary available.' }}</p>
+
+                        <h6 class="text-uppercase fw-bold text-muted mb-2 small">Full Summary</h6>
+                        <p class="small mb-3 text-secondary">{{ podcast.summary or 'No detailed summary available.' }}
+                        </p>
+
+                        {% if podcast.key_points %}
+                        <h6 class="text-uppercase fw-bold text-muted mb-2 small">Key Facts</h6>
+                        <ul class="small text-secondary ps-3 mb-0">
+                            {% for point in podcast.key_points %}
+                            <li>{{ point }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
+                    </div>
+
+                    <p class="text-secondary small mt-3 mb-0">Status: <span class="text-success fw-bold">{{
+                            podcast.status | capitalize }}</span></p>
+                </div>
+                <div class="col-md-5 text-md-end">
+                    <div class="vintage-player p-3 mb-2 shadow-sm">
+                        <audio controls class="w-100">
+                            <source src="{{ podcast.audio_url }}" type="audio/mpeg">
+                            Your browser does not support the audio element.
+                        </audio>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="col-12 text-center py-5">
+        <div class="news-snippet p-5 border-dashed">
+            <i class="bi bi-music-note-beamed display-1 text-muted mb-4 d-block"></i>
+            <h4 class="fw-bold">Your library is empty</h4>
+            <p class="text-muted">Head back to the dashboard and generate your first Papercast!</p>
+            <a href="/dashboard" class="btn btn-primary px-4">Go to Dashboard</a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
