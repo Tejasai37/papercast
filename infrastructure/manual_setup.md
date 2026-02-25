@@ -262,6 +262,119 @@ After setting up the AWS resources, you must configure your local application to
 
 ---
 
+## 12. Manual Server Setup & Deployment
+### 12.1 Connect to Instance
+Choose one of the two methods below:
+
+#### **Option A: EC2 Instance Connect (Easiest)**
+1.  Go to **EC2 Console** > **Instances** > Select `Papercast-Node`.
+2.  Click **Connect** > Select **EC2 Instance Connect** > Click **Connect**.
+3.  A terminal will open directly in your browser.
+
+#### **Option B: SSH (From Your Local Terminal)**
+1.  Open powershell/terminal on your computer and navigate to the folder containing your `.pem` file.
+2.  **Set Permissions** (Required on Windows):
+    ```powershell
+    icacls.exe papercast-key.pem /inheritance:r /grant:r "$($env:username):(R)"
+    ```
+3.  **Get Public IP**: Copy the "Public IPv4 address" from your instance dashboard.
+4.  **Connect**:
+    ```bash
+    ssh -i "papercast-key.pem" ec2-user@[YOUR_PUBLIC_IP]
+    ```
+
+### 12.2 Install System Dependencies
+Run these commands in the terminal:
+```bash
+sudo dnf update -y
+sudo dnf install -y python3.11 python3.11-pip git nginx
+```
+
+### 12.3 Clone & Setup Application
+```bash
+# Clone directly from your repo
+git clone [YOUR_REPO_URL] papercast
+cd papercast
+
+# Setup Virtual Environment
+python3.11 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+pip install gunicorn
+```
+
+### 12.4 Configure Environment
+> [!IMPORTANT]
+> **SERVER SECURITY**: Since your EC2 instance uses an **IAM Role**, you **DO NOT** need to put `AWS_ACCESS_KEY_ID` or `AWS_SECRET_ACCESS_KEY` in the server's `.env` file. Leave them blank or remove them entirely; the app will automatically use the role!
+
+1. Create the `.env` file:
+```bash
+nano .env
+```
+2. Paste your content (keep `SUMMARY`, `S3`, `DYNAMO`, `COGNITO` info, but **remove** the AWS Keys):
+```bash
+# Example server .env
+NEWS_API_KEY=...
+USE_REAL_AWS=true
+AWS_REGION=us-east-1
+S3_BUCKET_NAME=...
+# ... (No access keys needed here!)
+```
+
+### 12.5 Setup Gunicorn (Systemd)
+- Create a service file:
+```bash
+sudo nano /etc/systemd/system/papercast.service
+```
+- Paste this content:
+```ini
+[Unit]
+Description=Gunicorn instance to serve Papercast
+After=network.target
+
+[Service]
+User=ec2-user
+Group=ec2-user
+WorkingDirectory=/home/ec2-user/papercast
+Environment="PATH=/home/ec2-user/papercast/venv/bin"
+ExecStart=/home/ec2-user/papercast/venv/bin/gunicorn --workers 3 --bind 0.0.0.0:8000 backend.main:app -k uvicorn.workers.UvicornWorker
+
+[Install]
+WantedBy=multi-user.target
+```
+- Start the service:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl start papercast
+sudo systemctl enable papercast
+```
+
+### 12.6 Setup Nginx Reverse Proxy
+- Create Nginx config:
+```bash
+sudo nano /etc/nginx/conf.d/papercast.conf
+```
+- Paste this content:
+```nginx
+server {
+    listen 80;
+    server_name _;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+- Restart Nginx:
+```bash
+sudo systemctl restart nginx
+sudo systemctl enable nginx
+```
+
+---
+
 ## Verification Checklist
 - [x] VPC created with 2 Public Subnets in different AZs?
 - [x] Auto-assign Public IP enabled for both subnets?

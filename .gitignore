@@ -9,6 +9,8 @@ venv/
 ENV/
 papercast/
 .env
+.env.*
+!.env.example
 .venv
 pip-log.txt
 pip-delete-this-directory.txt
@@ -16,6 +18,9 @@ pip-delete-this-directory.txt
 # OS Junk
 .DS_Store
 Thumbs.db
+*.tmp
+*.bak
+*.swp
 
 # Project Specific
 node_modules/
@@ -23,14 +28,23 @@ dist/
 build/
 *.mp3
 *.wav
+*.pem
+*.docx
+*.doc
+*.pdf
+*.log
 article_cache/
 audiocache/
 *.json
 !backend/local_cache.json
 !infrastructure/aws_config.json
-!.env.example
 
-# IDEs
+# Tooling/IDE
 .vscode/
 .idea/
 .gemini/
+.pytest_cache/
+.coverage
+htmlcov/
+instance/
+.ipynb_checkpoints/
