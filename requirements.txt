@@ -6,3 +6,6 @@ requests
 boto3
 gunicorn
 python-dotenv
+beautifulsoup4
+lxml
+pydantic

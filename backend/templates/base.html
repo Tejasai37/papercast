@@ -4,12 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Papercast - AI News Podcast</title>
-    <!-- Google Fonts: Merriweather (Headings) & Inter (Body) -->
+    <title>Papercast - The Newsreel Radio</title>
+    <!-- Vintage Typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,400&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&family=Courier+Prime:ital,wght@0,400;0,700;1,400;1,700&display=swap"
         rel="stylesheet">
 
     <!-- Bootstrap 5 CDN -->
@@ -18,32 +18,66 @@
     <link href="{{ url_for('static', path='/style.css') }}" rel="stylesheet">
 </head>
 
-<body class="bg-light">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
-        <div class="container">
-            <a class="navbar-brand fw-bold" href="/{{ 'dashboard' if user else '' }}">Papercast</a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="/{{ 'dashboard' if user else '' }}">Home</a>
-                {% if user %}
-                <a class="nav-link" href="/library">My Library</a>
-                {% endif %}
+<body>
+    <div class="app-container">
+        <!-- Sidebar Console -->
+        <aside class="sidebar-console">
+            <div class="brand-plate">
+                <h1 class="h4">PAPERCAST</h1>
+                <div class="small fw-bold text-uppercase"
+                    style="letter-spacing: 3px; font-family: var(--font-console);">Newsreel Radio</div>
+            </div>
+
+            <nav class="radio-presets">
+                <a href="/dashboard"
+                    class="preset-link {% if request.url.path.startswith('/dashboard') or request.url.path == '/' %}active{% endif %}">
+                    <i class="bi bi-broadcast"></i> HOME FREQUENCY
+                </a>
+                <a href="/library"
+                    class="preset-link {% if request.url.path.startswith('/library') %}active{% endif %}">
+                    <i class="bi bi-archive"></i> THE ARCHIVE
+                </a>
                 {% if request.cookies.get('is_admin') == 'true' %}
-                <a class="nav-link" href="/admin">Admin Panel</a>
+                <a href="/admin" class="preset-link {% if request.url.path.startswith('/admin') %}active{% endif %}">
+                    <i class="bi bi-shield-lock"></i> ADMIN PANEL
+                </a>
                 {% endif %}
+            </nav>
+
+            <div class="station-status mt-4 p-2 border border-dark text-center" style="background: rgba(0,0,0,0.2);">
+                <div class="small fw-bold mb-1" style="font-family: var(--font-console); font-size: 0.6rem;">STATION
+                    STATUS</div>
+                <div class="d-flex align-items-center justify-content-center gap-2">
+                    <div class="status-light {% if user %}active{% endif %}" id="status-light"></div>
+                    <span class="small" style="font-family: var(--font-console); font-size: 0.7rem;">
+                        {% if user %}TRANSMITTING{% else %}STANDBY{% endif %}
+                    </span>
+                </div>
+            </div>
+
+            <div class="sidebar-operator-section">
                 {% if user %}
-                <span class="navbar-text ms-3 me-3 text-muted">|</span>
-                <span class="navbar-text text-accent me-3">User: {{ user }}</span>
-                <a class="nav-link btn btn-outline-light btn-sm px-3" href="/logout"
-                    style="line-height: 1.5;">Logout</a>
+                <div class="small text-uppercase mb-3" style="font-family: var(--font-console);">Operator: {{ user }}
+                </div>
+                <a class="preset-link" href="/logout" style="border: 1px solid var(--radio-gold);">
+                    <i class="bi bi-power"></i> SHUT DOWN
+                </a>
                 {% else %}
-                <a class="nav-link" href="/login">Login</a>
+                <a class="preset-link" href="/login">
+                    <i class="bi bi-key"></i> LOGIN
+                </a>
                 {% endif %}
             </div>
-        </div>
-    </nav>
-    <div class="container">
-        {% block content %}{% endblock %}
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <div class="container-fluid px-lg-5">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
     </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', path='/main.js') }}"></script>
 </body>

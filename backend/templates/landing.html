@@ -3,52 +3,61 @@
 {% block content %}
 <div class="container py-5">
     <div class="row align-items-center mb-5">
-        <div class="col-lg-6">
-            <h1 class="display-3 fw-bold mb-4">Papercast</h1>
-            <p class="lead text-secondary mb-4 fs-4">
-                The world's first <span class="text-accent">AI-Powered Vintage Newsroom</span>.
-                We transform the noise of the digital age into the soothing clarity of a classic broadcast.
+        <div class="col-lg-7 text-center">
+            <div class="brand-plate mb-4 d-inline-block px-4 mx-auto">
+                <h1 class="display-3 fw-bold mb-0" style="letter-spacing: 5px;">EXTRA! EXTRA!</h1>
+            </div>
+            <h2 class="display-4 fw-bold mb-4" style="line-height: 1.1;">THE WORLD DISPATCHED, <br>DIRECT TO YOUR DIAL.
+            </h2>
+            <p class="lead mb-5 fs-4" style="font-family: var(--font-news); color: var(--ink-black); line-height: 1.6;">
+                Papercast transforms the chaotic noise of the digital age into the soothing clarity of a classic 1940s
+                broadcast.
             </p>
-            <div class="d-flex gap-3">
-                <a href="/signup" class="btn btn-primary btn-lg px-4">Get Started</a>
-                <a href="/login" class="btn btn-outline-secondary btn-lg px-4">Login</a>
+            <div class="d-flex gap-3 justify-content-center">
+                <a href="/signup" class="btn-vintage btn-lg px-5 py-3">ENROLL NOW</a>
+                <a href="/login" class="btn-dial btn-lg px-5 py-3">RADIO LOGIN</a>
             </div>
         </div>
-        <div class="col-lg-6 text-center mt-5 mt-lg-0">
-            <div class="news-snippet p-5" style="transform: rotate(2deg);">
-                <i class="bi bi-broadcast display-1 text-accent mb-4"></i>
-                <h3 class="mb-3">Live from the Clouds</h3>
-                <p class="text-muted">Using AWS Bedrock & Polly to craft perfectly narrated news snippets just for you.
+        <div class="col-lg-5 text-center mt-5 mt-lg-0">
+            <div class="radio-dashboard p-5" style="border: 8px solid #1a120d;">
+                <i class="bi bi-broadcast display-1 mb-4 d-block" style="color: var(--dial-amber);"></i>
+                <h3 class="mb-3 text-white">LIVE FROM THE CLOUDS</h3>
+                <p
+                    style="font-family: var(--font-console); color: var(--radio-gold); font-size: 0.8rem; letter-spacing: 1px;">
+                    POWERED BY AWS BEDROCK & POLLY
                 </p>
             </div>
         </div>
     </div>
 
-    <hr class="my-5 opacity-10">
+    <hr class="my-5 border-dark opacity-100">
 
-    <div class="row g-5 text-center py-4">
+    <div class="row g-4 text-center py-4">
         <div class="col-md-4">
-            <div class="p-3">
-                <i class="bi bi-newspaper fs-1 text-accent mb-3 d-block"></i>
-                <h4 class="fw-bold">Real-time Headlines</h4>
-                <p class="text-muted">Stay updated with fresh headlines from NewsAPI.org categorized by your interest.
-                </p>
+            <div class="p-4 border border-dark h-100 d-flex flex-column justify-content-center"
+                style="border-style: double !important; min-height: var(--box-min-height);">
+                <i class="bi bi-newspaper fs-1 mb-3 d-block text-accent"></i>
+                <h4 class="fw-bold">BROADSHEET NEWS</h4>
+                <p class="small text-muted mb-0" style="font-family: var(--font-news);">Fresh headlines from global
+                    dispatches, categorized for the discerning listener.</p>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="p-3">
-                <i class="bi bi-mic fs-1 text-accent mb-3 d-block"></i>
-                <h4 class="fw-bold">AI Narration</h4>
-                <p class="text-muted">Natural-sounding voices powered by AWS Polly turn text into high-quality podcasts.
-                </p>
+            <div class="p-4 border border-dark h-100 d-flex flex-column justify-content-center"
+                style="border-style: double !important; min-height: var(--box-min-height);">
+                <i class="bi bi-mic fs-1 mb-3 d-block text-accent"></i>
+                <h4 class="fw-bold">VOX NARRATION</h4>
+                <p class="small text-muted mb-0" style="font-family: var(--font-news);">High-fidelity AI voices turn dry
+                    ink into a warm, narrarated radio play.</p>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="p-3">
-                <i class="bi bi-link-45deg fs-1 text-accent mb-3 d-block"></i>
-                <h4 class="fw-bold">Custom Articles</h4>
-                <p class="text-muted">Found an interesting read elsewhere? Paste the link and we'll summarize and
-                    narrate it.</p>
+            <div class="p-4 border border-dark h-100 d-flex flex-column justify-content-center"
+                style="border-style: double !important; min-height: var(--box-min-height);">
+                <i class="bi bi-link-45deg fs-1 mb-3 d-block text-accent"></i>
+                <h4 class="fw-bold">CUSTOM ARCHIVING</h4>
+                <p class="small text-muted mb-0" style="font-family: var(--font-news);">Paste any broadsheet URL and our
+                    operators will archive it for priority playback.</p>
             </div>
         </div>
     </div>

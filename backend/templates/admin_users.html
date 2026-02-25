@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h3 class="h4 mb-4 border-bottom border-dark pb-2" style="letter-spacing: 2px;">NETWORK REGISTRY: OPERATOR LOGS
+        </h3>
+
+        {% if request.query_params.get('msg') %}
+        <div class="alert alert-success bg-transparent border-success text-success small mb-4"
+            style="font-family: var(--font-console);">
+            <i class="bi bi-check-circle me-2"></i> DISPATCH: {{ request.query_params.get('msg') }}
+        </div>
+        {% endif %}
+
+        <div class="p-0 border border-dark" style="background: rgba(0,0,0,0.02);">
+            <table class="table mb-0" style="font-family: var(--font-news);">
+                <thead
+                    style="background: var(--bakelite-brown); color: var(--radio-gold); font-family: var(--font-console);">
+                    <tr>
+                        <th class="ps-4">CALL SIGN</th>
+                        <th>DISPATCH EMAIL</th>
+                        <th>ENLISTED</th>
+                        <th>STATUS</th>
+                        <th class="text-end pe-4">MASTER CONTROL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr style="border-bottom: 1px solid rgba(0,0,0,0.1);">
+                        <td class="ps-4 fw-bold">{{ user.username }}</td>
+                        <td class="small">{{ user.email }}</td>
+                        <td class="small">{{ user.created }}</td>
+                        <td>
+                            {% if user.enabled %}
+                            <span class="text-success fw-bold small">[ ACTIVE ]</span>
+                            {% else %}
+                            <span class="text-danger fw-bold small">[ SILENCED ]</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-4">
+                            <form action="/admin/users/toggle" method="POST" style="display:inline;">
+                                <input type="hidden" name="username" value="{{ user.username }}">
+                                <input type="hidden" name="enabled" value="{{ 'false' if user.enabled else 'true' }}">
+                                <button type="submit" class="console-btn py-1"
+                                    style="font-size: 0.7rem; background: {{ '#8b0000' if user.enabled else '#006400' }}; color: #fff;">
+                                    {{ 'SILENCE' if user.enabled else 'RE-TUNE' }}
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5 text-muted">No signals found in the registry.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

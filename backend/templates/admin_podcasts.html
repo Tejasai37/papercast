@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h3 class="h4 mb-4 border-bottom border-dark pb-2" style="letter-spacing: 2px;">THE VAULT: GLOBAL DISPATCH LOGS
+        </h3>
+
+        {% if request.query_params.get('msg') %}
+        <div class="alert alert-warning bg-transparent border-warning text-dark small mb-4"
+            style="font-family: var(--font-console);">
+            <i class="bi bi-exclamation-circle me-2"></i> SYSTEM NOTICE: {{ request.query_params.get('msg') }}
+        </div>
+        {% endif %}
+
+        <div class="p-0 border border-dark" style="background: rgba(0,0,0,0.02);">
+            <table class="table mb-0" style="font-family: var(--font-news);">
+                <thead
+                    style="background: var(--bakelite-brown); color: var(--radio-gold); font-family: var(--font-console);">
+                    <tr>
+                        <th class="ps-4">DISPATCH TITLE</th>
+                        <th>OPERATOR</th>
+                        <th>TRANSMITTED</th>
+                        <th class="text-end pe-4">VAULT CONTROL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for podcast in podcasts %}
+                    <tr style="border-bottom: 1px solid rgba(0,0,0,0.1);">
+                        <td class="ps-4">
+                            <div class="fw-bold text-truncate" style="max-width: 450px;">{{ podcast.title }}</div>
+                            <small class="text-accent">{{ podcast.source }}</small>
+                        </td>
+                        <td><span class="small" style="font-family: var(--font-console);">[{{ podcast.UserID }}]</span>
+                        </td>
+                        <td><small>{{ podcast.time }}</small></td>
+                        <td class="text-end pe-4">
+                            <a href="{{ podcast.audio_url }}" target="_blank" class="btn-dial py-1 px-3 me-2"
+                                style="text-decoration: none; font-size: 0.8rem;">
+                                <i class="bi bi-play-fill"></i> REPLAY
+                            </a>
+                            <form action="/admin/podcasts/delete/{{ podcast.ArticleID }}" method="POST"
+                                style="display:inline;"
+                                onsubmit="return confirm('WARNING: Permanent deletion. Continue?');">
+                                <button type="submit" class="btn-vintage py-1 px-2"
+                                    style="background: #8b0000; border-color: #8b0000; color: #fff; font-size: 0.8rem;">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center py-5 text-muted">No dispatches currently archived in the
+                            vault.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

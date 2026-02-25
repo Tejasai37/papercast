@@ -1,77 +1,71 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="row mb-4">
-    <div class="col-md-12">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 class="mb-0">Admin Dashboard</h2>
-            <span class="badge bg-success"><i class="bi bi-shield-check me-1"></i> Production Mode (AWS)</span>
-        </div>
-        <div class="row g-4">
-            <!-- Stat Card 1 -->
-            <div class="col-md-3">
-                <div class="news-snippet text-center h-100 py-4">
-                    <h6 class="text-uppercase text-muted ls-1">Total Users</h6>
-                    <h1 class="display-4 fw-bold mb-0">{{ stats.total_users }}</h1>
-                </div>
-            </div>
-            <!-- Stat Card 2 -->
-            <div class="col-md-3">
-                <div class="news-snippet text-center h-100 py-4">
-                    <h6 class="text-uppercase text-muted ls-1">Active Sessions</h6>
-                    <h1 class="display-4 fw-bold mb-0 text-accent">{{ stats.active_sessions }}</h1>
-                </div>
-            </div>
-            <!-- Stat Card 3 -->
-            <div class="col-md-3">
-                <div class="news-snippet text-center h-100 py-4">
-                    <h6 class="text-uppercase text-muted ls-1">Articles Generated</h6>
-                    <h1 class="display-4 fw-bold mb-0">{{ stats.articles_generated }}</h1>
-                </div>
-            </div>
-            <!-- Stat Card 4 -->
-            <div class="col-md-3">
-                <div class="news-snippet text-center h-100 py-4">
-                    <h6 class="text-uppercase text-muted ls-1">Est. API Cost</h6>
-                    <h1 class="display-4 fw-bold mb-0 text-danger">{{ stats.api_cost }}</h1>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+<div class="row mb-5">
+    <div class="col-12">
+        <h3 class="h4 mb-4 border-bottom border-dark pb-2" style="letter-spacing: 2px;">OPERATOR'S CONTROL CENTER</h3>
+        <p class="small text-muted mb-5" style="font-family: var(--font-news);">Logged as Station Master: {{ user }}</p>
 
-<div class="row">
-    <div class="col-md-8">
-        <div class="news-snippet">
-            <h4 class="mb-3 border-bottom pb-2">System Status</h4>
-            <ul class="list-group list-group-flush">
-                <li class="list-group-item bg-transparent px-0 py-2 d-flex justify-content-between">
-                    <span><i class="bi bi-cloud-check-fill me-2 text-success"></i> Amazon Bedrock:
-                        <strong>Operational</strong></span>
-                    <small class="text-muted">Live</small>
-                </li>
-                <li class="list-group-item bg-transparent px-0 py-2 d-flex justify-content-between">
-                    <span><i class="bi bi-mic-fill me-2 text-primary"></i> AWS Polly:
-                        <strong>Operational</strong></span>
-                    <small class="text-muted">Live</small>
-                </li>
-                <li class="list-group-item bg-transparent px-0 py-2 d-flex justify-content-between">
-                    <span><i class="bi bi-database-check me-2"></i> DynamoDB Cache: <strong>Active</strong></span>
-                    <small class="text-muted">Syncing</small>
-                </li>
-            </ul>
+        <div class="row g-4 mb-5">
+            <!-- Vintage Stat Counters (Uniform 3-Column) -->
+            <div class="col-md-4">
+                <div class="p-4 border border-dark text-center" style="background: rgba(0,0,0,0.03);">
+                    <div class="console-label mb-2">Total Signals</div>
+                    <div class="h1 mb-0 fw-bold" style="font-family: var(--font-header);">{{ stats.total_users }}</div>
+                    <div class="small opacity-50 mt-1">OPERATORS</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="p-4 border border-dark text-center" style="background: rgba(0,0,0,0.03);">
+                    <div class="console-label mb-2" style="color: var(--accent-steel);">Live Tubes</div>
+                    <div class="h1 mb-0 fw-bold" style="font-family: var(--font-header); color: var(--accent-steel);">{{
+                        stats.active_sessions }}</div>
+                    <div class="small opacity-50 mt-1">SESSIONS</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="p-4 border border-dark text-center" style="background: rgba(0,0,0,0.03);">
+                    <div class="console-label mb-2">Dispatches</div>
+                    <div class="h1 mb-0 fw-bold" style="font-family: var(--font-header);">{{ stats.articles_generated }}
+                    </div>
+                    <div class="small opacity-50 mt-1">BROADCASTS</div>
+                </div>
+            </div>
         </div>
-    </div>
 
-    <div class="col-md-4">
-        <div class="news-snippet bg-light">
-            <h5 class="mb-3">Quick Actions</h5>
-            <div class="d-grid gap-2">
-                <button class="btn btn-primary btn-sm"><i class="bi bi-gear-fill me-2"></i> System Settings</button>
-                <button class="btn btn-outline-primary btn-sm"><i class="bi bi-people-fill me-2"></i> User
-                    Management</button>
-                <button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash-fill me-2"></i> Clear Audio
-                    Cache</button>
+        <div class="row align-items-stretch">
+            <div class="col-md-8">
+                <div class="p-4 border border-dark h-100">
+                    <h4 class="fw-bold mb-4 text-uppercase border-bottom border-dark pb-2">Network Grid Status</h4>
+                    <div class="radio-presets bg-transparent m-0 p-0">
+                        <div class="preset-link active mb-2" style="cursor: default; border-color: var(--radio-gold);">
+                            <i class="bi bi-cloud-check me-3"></i> BEDROCK ENGINE: OPERATIONAL
+                        </div>
+                        <div class="preset-link active mb-2" style="cursor: default; border-color: var(--radio-gold);">
+                            <i class="bi bi-mic me-3"></i> POLLY TRANSMITTER: OPERATIONAL
+                        </div>
+                        <div class="preset-link active" style="cursor: default; border-color: var(--radio-gold);">
+                            <i class="bi bi-database me-3"></i> DYNAMO STORAGE: ACTIVE
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="radio-dashboard p-4 h-100">
+                    <h5 class="text-white fw-bold mb-4 border-bottom border-secondary pb-2">MASTER CONTROLS</h5>
+                    <div class="d-grid gap-3">
+                        <a href="/admin/users" class="console-btn text-center py-2"
+                            style="text-decoration: none;">MANAGE OPERATORS</a>
+                        <a href="/admin/podcasts" class="console-btn text-center py-2"
+                            style="text-decoration: none;">ARCHIVE CONTROL</a>
+                        <form action="/admin/podcasts/purge" method="POST"
+                            onsubmit="return confirm('WARNING: Permanent data purge. Continue?');">
+                            <button type="submit" class="console-btn w-100 py-2" style="background: #8b0000;">PURGE
+                                DISPATCHES</button>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

@@ -1,45 +1,55 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="row justify-content-center mt-5">
+<div class="row justify-content-center py-5">
     <div class="col-md-5">
-        <div class="news-snippet">
-            <h2 class="text-center mb-4 border-bottom pb-3">Create Account</h2>
+        <div class="radio-dashboard p-5" style="border: 6px solid #1a120d;">
+            <div class="text-center mb-4">
+                <h2 class="text-white fw-bold border-bottom border-secondary pb-3" style="letter-spacing: 2px;">STATION
+                    ENROLLMENT</h2>
+                <p class="small text-uppercase mt-2"
+                    style="font-family: var(--font-console); color: var(--radio-gold);">Join the Papercast Network</p>
+            </div>
 
             {% if error %}
-            <div class="alert alert-danger py-2 small mb-4" role="alert">
+            <div class="alert alert-danger py-2 small mb-4 bg-transparent border-danger text-danger" role="alert"
+                style="font-family: var(--font-console);">
                 <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ error }}
             </div>
             {% endif %}
 
             <form action="/signup" method="post">
                 <div class="mb-3">
-                    <label for="username" class="form-label fw-bold">Username</label>
-                    <input type="text" class="form-control" id="username" name="username" required>
+                    <label for="username" class="console-label">Network Handle (Username)</label>
+                    <div class="console-input-group">
+                        <input type="text" class="console-input" id="username" name="username" required>
+                    </div>
                 </div>
                 <div class="mb-3">
-                    <label for="email" class="form-label fw-bold">Email Address</label>
-                    <input type="email" class="form-control" id="email" name="email" required>
+                    <label for="email" class="console-label">Dispatch Email</label>
+                    <div class="console-input-group">
+                        <input type="email" class="console-input" id="email" name="email" required>
+                    </div>
                 </div>
-                <div class="mb-4">
-                    <label for="password" class="form-label fw-bold">Password</label>
-                    <input type="password" class="form-control" id="password" name="password" required>
-                    <div class="form-text small text-muted">Min 8 chars, uppercase & number required.</div>
+                <div class="mb-5">
+                    <label for="password" class="console-label">Secure Cipher (Password)</label>
+                    <div class="console-input-group">
+                        <input type="password" class="console-input" id="password" name="password" required>
+                    </div>
                 </div>
 
-                <button type="submit" class="btn btn-primary w-100 py-2 mb-3">
-                    <i class="bi bi-person-plus-fill"></i> Sign Up
+                <button type="submit" class="console-btn w-100 py-3 mb-4"
+                    style="background: var(--radio-gold); color: #000; font-size: 1.1rem;">
+                    ENLIST OPERATOR
                 </button>
 
                 <div class="text-center">
-                    <span class="text-muted small">Already have an account?</span>
-                    <a href="/login" class="small text-accent fw-bold ms-1">Login</a>
+                    <span class="small" style="color: var(--radio-gold);">Already an operator?</span>
+                    <a href="/login"
+                        class="small fw-bold ms-1 text-white border-bottom border-white text-decoration-none">TUNE
+                        IN</a>
                 </div>
             </form>
-        </div>
-
-        <div class="text-center mt-4 opacity-50">
-            <small class="text-muted font-monospace">COGNITO SECURED SYSTEM v1.0</small>
         </div>
     </div>
 </div>

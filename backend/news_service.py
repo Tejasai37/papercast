@@ -1,13 +1,19 @@
 
 import os
 import requests
+import hashlib
 from typing import List, Dict
 
 class NewsService:
     def __init__(self, api_key: str = None):
         self.api_key = api_key or os.getenv("NEWS_API_KEY")
         self.base_url = "https://newsapi.org/v2"
-        self.cache = {} # Temporary cache for the current session
+        self.cache = {} # Discovery session cache
+
+    def _generate_id(self, title: str, prefix: str) -> str:
+        """Generates a stable unique ID based on the title"""
+        title_hash = hashlib.md5(title.encode('utf-8')).hexdigest()[:8]
+        return f"{prefix}-{title_hash}"
 
     def get_top_headlines(self, category: str = "general", country: str = "us") -> List[Dict]:
         """Fetches top headlines from NewsAPI.org"""
@@ -24,17 +30,20 @@ class NewsService:
         }
 
         try:
+            print(f"DEBUG: Fetching headlines for category: {category}")
             response = requests.get(url, params=params)
             response.raise_for_status()
             data = response.json()
             
-            # Format the data to match our application's expected structure
             articles = []
-            for i, item in enumerate(data.get("articles", [])):
-                article_id = f"news-{i}"
+            for item in data.get("articles", []):
+                title = item.get("title", "")
+                if not title: continue
+                
+                article_id = self._generate_id(title, "news")
                 article = {
                     "id": article_id,
-                    "title": item.get("title"),
+                    "title": title,
                     "source": item.get("source", {}).get("name", "Unknown"),
                     "category": category.capitalize(),
                     "time": item.get("publishedAt", "Recently"),
@@ -42,7 +51,8 @@ class NewsService:
                     "url": item.get("url")
                 }
                 articles.append(article)
-                self.cache[article_id] = article # Store in cache
+                self.cache[article_id] = article 
+            
             return articles
         except Exception as e:
             print(f"Error fetching news: {e}")
@@ -63,16 +73,20 @@ class NewsService:
         }
 
         try:
+            print(f"DEBUG: Searching news for: {query}")
             response = requests.get(url, params=params)
             response.raise_for_status()
             data = response.json()
             
             articles = []
-            for i, item in enumerate(data.get("articles", [])):
-                article_id = f"search-{i}"
+            for item in data.get("articles", []):
+                title = item.get("title", "")
+                if not title: continue
+                
+                article_id = self._generate_id(title, "search")
                 article = {
                     "id": article_id,
-                    "title": item.get("title"),
+                    "title": title,
                     "source": item.get("source", {}).get("name", "Unknown"),
                     "category": "Search Result",
                     "time": item.get("publishedAt", "Recently"),
@@ -81,14 +95,60 @@ class NewsService:
                 }
                 articles.append(article)
                 self.cache[article_id] = article
+            
             return articles
         except Exception as e:
             print(f"Error searching news: {e}")
             return []
 
     def get_article_by_id(self, article_id: str) -> Dict:
-        """Retrieves an article from the current session cache"""
+        """Retrieves an article from the current discovery cache"""
         return self.cache.get(article_id)
+
+    def extract_article(self, url: str) -> Dict:
+        """Extracts content from a raw URL using BeautifulSoup"""
+        from bs4 import BeautifulSoup
+        try:
+            print(f"DEBUG: Extracting content from: {url}")
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            
+            soup = BeautifulSoup(response.text, 'lxml')
+            
+            # Remove scripts and styles
+            for script in soup(["script", "style"]):
+                script.extract()
+
+            # Extract title
+            title = soup.find('h1').get_text().strip() if soup.find('h1') else "Custom Article"
+            
+            # Extract content (grab all paragraphs)
+            paragraphs = soup.find_all('p')
+            content = " ".join([p.get_text().strip() for p in paragraphs if len(p.get_text().strip()) > 20])
+            
+            if len(content) < 100:
+                content = "Could not extract sufficient text from this page."
+
+            article_id = self._generate_id(title, "custom")
+            article = {
+                "id": article_id,
+                "title": title,
+                "source": "Custom Link",
+                "category": "Custom Broadcast",
+                "time": "Just now",
+                "content": content,
+                "url": url
+            }
+            
+            # Save to cache so generate_audio can find it
+            self.cache[article_id] = article
+            return article
+        except Exception as e:
+            print(f"Extraction Error: {e}")
+            return None
 
 # Singleton instance
 news_service = NewsService()

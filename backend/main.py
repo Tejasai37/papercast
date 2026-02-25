@@ -14,12 +14,12 @@ app.mount("/static", StaticFiles(directory="backend/static"), name="static")
 templates = Jinja2Templates(directory="backend/templates")
 
 from backend.news_service import news_service
-from backend.news_service import news_service
+from backend.real_aws import RealAWSService
 
 @app.get("/login")
 def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
-
+    user = request.cookies.get("session")
+    return templates.TemplateResponse("login.html", {"request": request, "user": user})
 
 # Validates user and sets cookie
 @app.post("/login")
@@ -33,9 +33,9 @@ async def login(request: Request, username: str = Form(...), password: str = For
         is_admin = "admins" in groups
         
         response = RedirectResponse(url="/admin" if is_admin else "/", status_code=303)
-        response.set_cookie(key="session", value=username)
-        response.set_cookie(key="id_token", value=auth_result['IdToken'])
-        response.set_cookie(key="is_admin", value="true" if is_admin else "false")
+        response.set_cookie(key="session", value=username, httponly=True)
+        response.set_cookie(key="id_token", value=auth_result['IdToken'], httponly=True)
+        response.set_cookie(key="is_admin", value="true" if is_admin else "false", httponly=True)
         return response
     else:
         return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid Cognito credentials"})
@@ -50,7 +50,8 @@ def logout(response: Response):
 
 @app.get("/signup")
 def signup_page(request: Request):
-    return templates.TemplateResponse("signup.html", {"request": request})
+    user = request.cookies.get("session")
+    return templates.TemplateResponse("signup.html", {"request": request, "user": user})
 
 @app.post("/signup")
 async def signup(request: Request, username: str = Form(...), password: str = Form(...), email: str = Form(...)):
@@ -64,9 +65,7 @@ async def signup(request: Request, username: str = Form(...), password: str = Fo
 @app.get("/")
 def landing_page(request: Request):
     user = request.cookies.get("session")
-    if user:
-        return RedirectResponse(url="/dashboard")
-    return templates.TemplateResponse("landing.html", {"request": request})
+    return templates.TemplateResponse("landing.html", {"request": request, "user": user})
 
 @app.get("/dashboard")
 def dashboard(request: Request, category: str = "general", q: str = None, language: str = "en", sort_by: str = "relevancy"):
@@ -98,23 +97,6 @@ def dashboard(request: Request, category: str = "general", q: str = None, langua
         "search_query": q or ""
     })
 
-@app.post("/api/process_link")
-async def process_link(request: Request, url: str = Form(...)):
-    """
-    Endpoint to process a custom article link.
-    """
-    user = request.cookies.get("session")
-    if not user:
-        return {"error": "Unauthorized"}
-    
-    # In a real app, this would scrape the URL and use Bedrock to summarize
-    # For now, we return a mock success message
-    return {
-        "title": "Custom Article Processed",
-        "content": f"We have successfully analyzed the content from: {url}",
-        "article_id": "custom-link",
-        "status": "ready"
-    }
 
 @app.get("/admin")
 def admin_dashboard(request: Request):
@@ -127,8 +109,7 @@ def admin_dashboard(request: Request):
     aws_service = RealAWSService()
     stats = aws_service.get_admin_metrics()
     
-    # Add a pseudo-metric for active sessions if needed, or just let it be
-    stats["active_sessions"] = "Local Dev" # Or some other indicator
+    stats["active_sessions"] = "Local Dev"
     
     return templates.TemplateResponse("admin.html", {
         "request": request, 
@@ -136,8 +117,51 @@ def admin_dashboard(request: Request):
         "stats": stats
     })
 
+@app.get("/admin/users")
+def admin_users(request: Request):
+    is_admin = request.cookies.get("is_admin") == "true"
+    if not is_admin: return RedirectResponse(url="/")
+    
+    aws_service = RealAWSService()
+    users = aws_service.list_all_users()
+    return templates.TemplateResponse("admin_users.html", {"request": request, "users": users})
 
-from backend.real_aws import RealAWSService
+@app.post("/admin/users/toggle")
+async def toggle_user(request: Request, username: str = Form(...), enabled: str = Form(...)):
+    is_admin = request.cookies.get("is_admin") == "true"
+    if not is_admin: return {"error": "Unauthorized"}
+    
+    aws_service = RealAWSService()
+    # enabled comes as 'true' or 'false' string from form
+    success = aws_service.toggle_user_status(username, enabled == "true")
+    return RedirectResponse(url="/admin/users?msg=Status+Updated", status_code=303)
+
+@app.get("/admin/podcasts")
+def admin_podcasts(request: Request):
+    is_admin = request.cookies.get("is_admin") == "true"
+    if not is_admin: return RedirectResponse(url="/")
+    
+    aws_service = RealAWSService()
+    podcasts = aws_service.get_all_podcasts()
+    return templates.TemplateResponse("admin_podcasts.html", {"request": request, "podcasts": podcasts})
+
+@app.post("/admin/podcasts/delete/{article_id}")
+async def delete_podcast(request: Request, article_id: str):
+    is_admin = request.cookies.get("is_admin") == "true"
+    if not is_admin: return {"error": "Unauthorized"}
+    
+    aws_service = RealAWSService()
+    success = aws_service.delete_podcast(article_id)
+    return RedirectResponse(url="/admin/podcasts?msg=Podcast+Deleted", status_code=303)
+
+@app.post("/admin/podcasts/purge")
+async def purge_podcasts(request: Request):
+    is_admin = request.cookies.get("is_admin") == "true"
+    if not is_admin: return {"error": "Unauthorized"}
+    
+    aws_service = RealAWSService()
+    success = aws_service.purge_all_podcasts()
+    return RedirectResponse(url="/admin/podcasts?msg=All+Podcasts+Purged", status_code=303)
 
 @app.post("/api/generate_audio/{article_id}")
 async def generate_audio(request: Request, article_id: str):
@@ -145,46 +169,72 @@ async def generate_audio(request: Request, article_id: str):
     Endpoint to generate audio with Bedrock Summarization and Polly TTS.
     """
     user = request.cookies.get("session", "anonymous")
+    print(f"DEBUG: Audio request for {article_id} by user {user}")
     aws_service = RealAWSService()
     
-    # 1. Check Cache (S3/DynamoDB)
-    cached_data = aws_service.get_article_metadata(article_id)
-    if cached_data and cached_data.get("audio_url"):
-        return {"audio_url": cached_data["audio_url"], "status": "cached"}
-
-    # 2. Get Article Content
+    # 1. Try to get content from Memory Cache (Fresh Discovery)
     article = news_service.get_article_by_id(article_id)
     
-    if not article:
-        return {"error": "Article not found", "status": "failed"}
+    # 2. If not in memory, check DynamoDB (Already Generated)
+    article_data = aws_service.get_article_metadata(article_id)
+    
+    # Handle already completed podcasts (from DB)
+    if article_data and article_data.get("status") == "completed" and article_data.get("audio_url"):
+        print(f"DEBUG: Found already completed podcast for {article_id}")
+        return {
+            "audio_url": article_data["audio_url"], 
+            "status": "cached",
+            "summary": article_data.get("summary"),
+            "key_points": article_data.get("key_points"),
+            "tldr": article_data.get("tldr")
+        }
 
-    content = article.get("content", "No content available.")
+    # 3. If we have the article in memory, generate it!
+    if article:
+        content = article.get("content", "No content available.")
+        title = article.get("title")
+        source = article.get("source")
+        time = article.get("time")
+    # 4. If memory is gone but DB has 'discovered' content (fallback for older records)
+    elif article_data and article_data.get("content"):
+        content = article_data.get("content")
+        title = article_data.get("title")
+        source = article_data.get("source")
+        time = article_data.get("time")
+    else:
+        print(f"DEBUG ERROR: Article {article_id} not found in memory or DB!")
+        return {"error": "Article content expired. Please refresh headlines.", "status": "failed"}
+
+    print(f"DEBUG: Generating audio for: {title[:30]}...")
     
     # 3. Perform Generation
-    # A. Summarize with Bedrock (Returns dict: script, summary, key_points, tldr)
     insights = aws_service.summarize_article(content)
     
-    # B. Convert to Speech with Polly (Using the radio script)
     audio_bytes = aws_service.generate_speech(insights['script'])
     if not audio_bytes:
+        print("DEBUG ERROR: Polly generation failed")
         return {"error": "Polly generation failed", "status": "failed"}
     
-    # C. Upload to S3
     file_name = f"{article_id}.mp3"
     audio_url = aws_service.upload_audio(audio_bytes, file_name)
+    if not audio_url:
+        print("DEBUG ERROR: S3 upload failed")
+        return {"error": "S3 upload failed", "status": "failed"}
     
-    # 4. Update Cache (DynamoDB) with Expanded Metadata
+    # 4. Save to DynamoDB ON-DEMAND (Only on successful generation)
     aws_service.save_article_metadata(article_id, {
+        "article_id": article_id,
         "audio_url": audio_url,
         "status": "completed",
-        "title": article.get("title"),
-        "source": article.get("source"),
-        "time": article.get("time"),
+        "title": title,
+        "source": source,
+        "time": time,
         "summary": insights.get("summary", ""),
         "key_points": insights.get("key_points", []),
         "tldr": insights.get("tldr", "")
     }, user_id=user)
     
+    print(f"DEBUG: Success! Audio generated and saved for {article_id}")
     return {
         "audio_url": audio_url, 
         "status": "generated",
@@ -192,6 +242,33 @@ async def generate_audio(request: Request, article_id: str):
         "key_points": insights.get("key_points"),
         "tldr": insights.get("tldr")
     }
+
+@app.post("/api/process_link")
+async def process_link(request: Request, url: str = Form(...)):
+    user = request.cookies.get("session", "anonymous")
+    article = news_service.extract_article(url)
+    
+    # Also fetch general headlines to fill the rest of the page
+    headlines = news_service.get_top_headlines(category="general")
+    
+    if not article:
+        return templates.TemplateResponse("dashboard.html", {
+            "request": request,
+            "user": user,
+            "news": headlines[:5],
+            "current_category": "Error",
+            "error": "Failed to extract content from link."
+        })
+    
+    # Prepend custom article to the top of the general headlines
+    all_news = [article] + headlines[:4]
+    
+    return templates.TemplateResponse("dashboard.html", {
+        "request": request,
+        "user": user,
+        "news": all_news,
+        "current_category": "Custom Broadcast"
+    })
 
 @app.get("/library")
 def library_page(request: Request):
