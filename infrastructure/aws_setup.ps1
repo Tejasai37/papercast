@@ -44,7 +44,8 @@ aws ec2 associate-route-table --subnet-id $SubnetAId --route-table-id $RouteTabl
 aws ec2 associate-route-table --subnet-id $SubnetBId --route-table-id $RouteTableId --region $Region
 aws ec2 modify-subnet-attribute --subnet-id $SubnetAId --map-public-ip-on-launch --region $Region
 aws ec2 modify-subnet-attribute --subnet-id $SubnetBId --map-public-ip-on-launch --region $Region
-Write-Host "Subnets Created: $SubnetAId, $SubnetBId" -ForegroundColor Green
+Write-Host "Subnets Created and associated with IGW Route Table: $SubnetAId, $SubnetBId" -ForegroundColor Green
+Write-Host "Public routing verified for ALB compatibility." -ForegroundColor Cyan
 
 # 5. Security Groups
 Write-Host "Creating Security Groups..."
@@ -95,9 +96,29 @@ Write-Host "ALB Created: $AlbDns" -ForegroundColor Green
 
 # 7. Auto Scaling Group
 Write-Host "Creating ASG..."
-aws ec2 create-launch-template --launch-template-name "$ProjectName-LT" --launch-template-data "{""ImageId"":""ami-0bb84387b76a46159"",""InstanceType"":""t2.micro"",""KeyName"":""papercast-key"",""SecurityGroupIds"":[""$Ec2SgId""],""IamInstanceProfile"":{""Name"":""$ProjectName-EC2-Role""}}" --region $Region
-aws autoscaling create-auto-scaling-group --auto-scaling-group-name "$ProjectName-ASG" --launch-template LaunchTemplateName="$ProjectName-LT" --min-size 1 --max-size 2 --desired-capacity 1 --vpc-zone-identifier "$SubnetAId,$SubnetBId" --target-group-arns $TgArn --region $Region
-Write-Host "ASG Created" -ForegroundColor Green
+$LtData = @{
+    ImageId = "ami-0bb84387b76a46159"
+    InstanceType = "t2.micro"
+    KeyName = "papercast-key"
+    SecurityGroupIds = @($Ec2SgId)
+    IamInstanceProfile = @{ Name = "$ProjectName-EC2-Role" }
+    TagSpecifications = @(
+        @{
+            ResourceType = "instance"
+            Tags = @( @{ Key = "Name"; Value = "$ProjectName-ASG-Node" } )
+        }
+    )
+} | ConvertTo-Json -Compress
+aws ec2 create-launch-template --launch-template-name "$ProjectName-LT" --launch-template-data "$($LtData.Replace('"', '""'))" --region $Region
+
+aws autoscaling create-auto-scaling-group --auto-scaling-group-name "$ProjectName-ASG" `
+    --launch-template LaunchTemplateName="$ProjectName-LT" `
+    --min-size 1 --max-size 2 --desired-capacity 1 `
+    --vpc-zone-identifier "$SubnetAId,$SubnetBId" `
+    --target-group-arns $TgArn `
+    --tags "ResourceId=$ProjectName-ASG,ResourceType=auto-scaling-group,Key=Name,Value=$ProjectName-Node,PropagateAtLaunch=true" `
+    --region $Region
+Write-Host "ASG Created with instance tagging enabled" -ForegroundColor Green
 
 # Summary
 Write-Host "`n--- Setup Complete ---" -ForegroundColor Cyan

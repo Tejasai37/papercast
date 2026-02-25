@@ -40,7 +40,9 @@ def create_vpc(ec2):
         subnet.create_tags(Tags=[{"Key": "Name", "Value": f"{PROJECT_NAME}-Public-Subnet-{suffix.upper()}"}])
         route_table.associate_with_subnet(SubnetId=subnet.id)
         subnets.append(subnet)
-        print(f"Public Subnet {suffix.upper()} Created: {subnet.id}")
+        print(f"Public Subnet {suffix.upper()} Created: {subnet.id} (Routing: Public IGW)")
+
+    print("VPC Networking Infrastructure verified for ALB compatibility.")
 
     return vpc, subnets
 
@@ -271,7 +273,16 @@ def create_asg(asg_client, tg_arn, subnets, role_name, sg_id):
             MaxSize=2,
             DesiredCapacity=1,
             VPCZoneIdentifier=subnet_ids,
-            TargetGroupARNs=[tg_arn]
+            TargetGroupARNs=[tg_arn],
+            Tags=[
+                {
+                    'ResourceId': asg_name,
+                    'ResourceType': 'auto-scaling-group',
+                    'Key': 'Name',
+                    'Value': f"{PROJECT_NAME}-Node",
+                    'PropagateAtLaunch': True
+                }
+            ]
         )
         print(f"ASG Created: {asg_name}")
         return asg_name

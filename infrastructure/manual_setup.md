@@ -44,6 +44,9 @@ This document provides step-by-step instructions for creating the project infras
     -   Select **BOTH** `Papercast-Public-Subnet-A` and `B`.
     -   Click **Save**.
 
+> [!IMPORTANT]
+> **VERIFY PUBLIC ROUTING**: Click the **Routes** tab for this route table. You **MUST** see a destination `0.0.0.0/0` targeting your `Papercast-IGW`. Without this, your Load Balancer will not be accessible from the internet.
+
 ---
 
 ## 2. Create Security Groups
@@ -113,6 +116,21 @@ This document provides step-by-step instructions for creating the project infras
 7.  **Step 6: Review and create**:
     -   Scroll to bottom > **Create user pool**.
 
+### 5.1 Create admins Group
+1.  In your User Pool dashboard, click the **Groups** tab.
+2.  Click **Create group**.
+3.  **Group name**: `admins` (Must be exact!).
+4.  Click **Create group**.
+
+### 5.2 Promote a User
+1.  Click the **Users** tab.
+2.  Click on your username.
+3.  Click **Add user to group**.
+4.  Select `admins`.
+5.  Click **Add**.
+
+*Now, when you log in with that user, the Papercast dashboard will automatically recognize you as an administrator!*
+
 ---
 
 ## 6. Create IAM Role (API Permissions)
@@ -139,6 +157,9 @@ This document provides step-by-step instructions for creating the project infras
 1.  Search for "EC2" > **Target Groups** > **Create target group**.
     -   **Choose a target type**: `Instances`.
     -   **Name**: `Papercast-TG`.
+    -   **Protocol**: `HTTP`.
+    -   **Port**: `80`.
+    -   **VPC**: Select `Papercast-VPC`.
     -   **Health check path**: `/`.
     -   Click **Next** > **Create target group** (Wait to register instances later).
 2.  **Load Balancers** > **Create load balancer**.
@@ -148,42 +169,84 @@ This document provides step-by-step instructions for creating the project infras
     -   **Security groups**: Remove default and select `Papercast-ALB-SG`.
     -   **Listeners and routing**: HTTP:80 -> Forward to `Papercast-TG`.
     -   Click **Create load balancer**.
-
+    
+> [!TIP]
+> **"No Route to Internet Gateway" Warning?**: If you see this warning, go back to **Section 1.3** and ensure your Route Table has a `0.0.0.0/0` path to the Internet Gateway and that both subnets are explicitly associated.
 ---
 
 ## 8. Create Auto Scaling Group (ASG)
 1.  **Launch Templates** > **Create launch template**.
     -   **Name**: `Papercast-LT`.
-    -   **AMI**: Amazon Linux 2023.
+    -   **AMI**: Amazon Linux 2023 (Select the one with **Kernel 6.1** - it is the standard LTS version).
     -   **Instance type**: `t2.micro`.
     -   **Key pair**: `papercast-key`.
     -   **Security groups**: `Papercast-EC2-SG`.
     -   **Advanced details** > **IAM instance profile**: `Papercast-EC2-Role`.
+    -   **Tags**: Add Tag -> Key: `Name` | Value: `Papercast-ASG-Node`. (Check "Instances" and "Volumes").
     -   Click **Create launch template**.
 2.  **Auto Scaling Groups** > **Create Auto Scaling group**.
+    -   **Auto Scaling group name**: `Papercast-ASG`.
     -   **Launch template**: `Papercast-LT`.
     -   **VPC**: `Papercast-VPC` > Select **BOTH** subnets.
     -   **Load balancing**: **Attach to an existing load balancer** > `Papercast-TG`.
+    -   **Target Group Health Checks**: Check **ELB**.
     -   **Desired/Min/Max**: `1` / `1` / `2`.
+    -   **Step 6: Add Tags**: 
+        -   Add Tag -> Key: `Name` | Value: `Papercast-Node`.
+        -   Ensure **Propagate at launch** is checked.
     -   Click **Create Auto Scaling group**.
 
 ---
 
 ## 9. Setup Route 53 & SSL (Optional/Production)
-1.  **Route 53**:
-    -   Create a **Hosted Zone** for your domain (e.g., `mydomain.com`).
-    -   Create an **A Record** (Alias) > Select **Alias to Application Load Balancer`.
-2.  **ACM (Certificate Manager)**:
-    -   Request a public certificate for your domain.
-    -   Follow DNS validation instructions in Route 53.
-3.  **ALB HTTPS Listener**:
-    -   Go to `Papercast-ALB` > **Listeners** > **Add listener`.
-    -   HTTPS:443 -> Forward to `Papercast-TG`.
-    -   Select the certificate from ACM.
+> [!NOTE]
+> **PRICING ALERT**: Route 53 Hosted Zones cost **$0.50 per month** (not prorated). This is one of the few AWS services not covered by the 100% free tier. If you don't want to pay this, you can skip to **Section 11** and just use your ALB's DNS name for testing.
+
+### 9.1 Register/Setup Domain
+1.  Search for "Route 53" in the top bar.
+2.  Click **Hosted zones** > **Create hosted zone**.
+3.  **Domain name**: Enter your domain (e.g., `papercast.live`).
+4.  **Type**: Public hosted zone.
+5.  Click **Create hosted zone**.
+    *   *Note: If you bought your domain elsewhere, you must point your NS records to the 4 name servers listed in Route 53.*
+
+### 9.2 Request SSL Certificate (ACM)
+1.  Search for "Certificate Manager" > **Request certificate**.
+2.  Select **Request a public certificate**.
+3.  **Fully qualified domain name**: `*.yourdomain.com` and `yourdomain.com`.
+4.  **Validation method**: DNS validation.
+5.  Click **Request**.
+6.  Once created, click the certificate ID > **Create records in Route 53** > **Create records**.
+    *   *Wait for Status to become "Issued".*
+
+### 9.3 Point Domain to Load Balancer
+1.  Go back to **Route 53** > **Hosted zones** > Select your zone.
+2.  Click **Create record**.
+3.  **Record type**: `A`.
+4.  **Alias**: Toggle **ON**.
+5.  **Route traffic to**:
+    -   Alias to Application and Classic Load Balancer.
+    -   Region: (e.g., `us-east-1`).
+    -   Select `Papercast-ALB`.
+6.  Click **Create records**.
 
 ---
 
-## 10. Local Environment Configuration
+## 10. Enable HTTPS on Load Balancer
+> [!WARNING]
+> **DOMAIN REQUIRED**: You **CANNOT** use AWS Certificate Manager (ACM) for the default ALB DNS name (the one ending in `.elb.amazonaws.com`). To use Section 10, you **MUST** own a custom domain. If you do not have a domain, you cannot enable HTTPS/SSL through ACM.
+
+1.  G0 to **EC2** > **Load Balancers** > `Papercast-ALB`.
+2.  Click **Listeners** tab > **Add listener**.
+3.  **Protocol**: `HTTPS` (Port 443).
+4.  **Default actions**: Forward to `Papercast-TG`.
+5.  **Secure listener settings**: Select the certificate you created in ACM.
+6.  Click **Add**.
+7.  *(Optional)* Update the HTTP:80 listener to "Redirect" to HTTPS:443 for security.
+
+---
+
+## 11. Local Environment Configuration
 After setting up the AWS resources, you must configure your local application to talk to them.
 
 1.  **Create `.env` File**: 
@@ -199,25 +262,6 @@ After setting up the AWS resources, you must configure your local application to
 
 ---
 
-## 11. Setting up Administrative Access
-The application uses **Cognito Groups** to determine who is an admin.
-
-1.  **Create admins Group**:
-    -   In your User Pool dashboard, click the **Groups** tab.
-    -   Click **Create group**.
-    -   **Group name**: `admins` (Must be exact!).
-    -   Click **Create group**.
-2.  **Promote a User**:
-    -   Click the **Users** tab.
-    -   Click on your username.
-    -   Click **Add user to group**.
-    -   Select `admins`.
-    -   Click **Add**.
-
-Now, when you log in with that user, the Papercast dashboard will automatically recognize you as an administrator!
-
----
-
 ## Verification Checklist
 - [x] VPC created with 2 Public Subnets in different AZs?
 - [x] Auto-assign Public IP enabled for both subnets?
@@ -227,6 +271,5 @@ Now, when you log in with that user, the Papercast dashboard will automatically 
 - [x] S3 Bucket & DynamoDB Table `PapercastCache` ready?
 - [x] Cognito User Pool and App Client ready?
 - [x] IAM Role `Papercast-EC2-Role` with full access attached to Launch Template?
-- [x] ALB is "Active" and DNS name is working?
-- [x] ASG is successfully launching a node into the Target Group?
-- [x] Local `.env` file is populated with all the IDs above?
+- [ ] ALB is "Active" and DNS name is working?
+- [ ] ASG is successfully launching a node into the Target Group?
