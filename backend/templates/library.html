@@ -33,6 +33,20 @@
 
                                 <p class="mb-4" style="line-height: 1.6;">{{ podcast.summary }}</p>
 
+                                <!-- Radio Script Dialogue -->
+                                {% if podcast.script %}
+                                <div class="mt-4 pt-3 border-top border-dark">
+                                    <h6 class="text-uppercase fw-bold mb-3 small"
+                                        style="font-family: var(--font-console);">Radio Script (Dialogue):</h6>
+                                    <div class="dialogue-script small">
+                                        {{ podcast.script | replace('[HOST]:', '<span class="speaker-host">HOST</span>')
+                                        | replace('[EXPERT]:', '<span class="speaker-expert">EXPERT</span>') |
+                                        replace('[HOST]', '<span class="speaker-host">HOST</span>') |
+                                        replace('[EXPERT]', '<span class="speaker-expert">EXPERT</span>') | safe }}
+                                    </div>
+                                </div>
+                                {% endif %}
+
                                 {% if podcast.key_points %}
                                 <div class="mt-4 pt-3 border-top border-dark">
                                     <h6 class="text-uppercase fw-bold mb-3 small"

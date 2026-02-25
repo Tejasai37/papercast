@@ -37,6 +37,13 @@ async function generateAudio(articleId) {
         // Format Key Points as bullets
         const keyPointsHtml = data.key_points ? data.key_points.map(p => `<li>${p}</li>`).join('') : '';
 
+        // Format Script Dialogue
+        const scriptHtml = data.script ? data.script
+            .replace(/\[HOST\]:/g, '<span class="speaker-host">HOST</span>')
+            .replace(/\[EXPERT\]:/g, '<span class="speaker-expert">EXPERT</span>')
+            .replace(/\[HOST\]/g, '<span class="speaker-host">HOST</span>')
+            .replace(/\[EXPERT\]/g, '<span class="speaker-expert">EXPERT</span>') : '';
+
         playerContainer.innerHTML = `
         <div class="radio-dashboard">
             <div class="small text-uppercase mb-2 fw-bold" style="font-family: var(--font-console); color: var(--dial-amber);">
@@ -80,9 +87,18 @@ async function generateAudio(articleId) {
             </div>
 
             <h6 class="text-uppercase fw-bold mt-4 mb-2 small" style="opacity: 0.6;">Key Dispatches</h6>
-            <ul class="small ps-3 mb-0" style="font-family: var(--font-news);">
+            <ul class="small ps-3 mb-4" style="font-family: var(--font-news);">
                 ${keyPointsHtml || '<li>No key points available.</li>'}
             </ul>
+
+            ${scriptHtml ? `
+            <div class="mt-4 pt-3 border-top border-dark">
+                <h6 class="text-uppercase fw-bold mb-3 small" style="font-family: var(--font-console);">Radio Script (Dialogue):</h6>
+                <div class="dialogue-script small">
+                    ${scriptHtml}
+                </div>
+            </div>
+            ` : ''}
         </div>`;
 
         // Hide the original button after success to keep UI clean

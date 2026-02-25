@@ -555,3 +555,41 @@ h5 {
     color: var(--dial-amber);
     margin-right: 10px;
 }
+
+/* Dialogue Script Styling */
+.dialogue-script {
+    font-family: var(--font-news);
+    line-height: 1.8;
+    background: rgba(0, 0, 0, 0.02);
+    padding: 1.5rem;
+    border: 1px dashed rgba(0, 0, 0, 0.1);
+    border-radius: 5px;
+    margin-top: 1rem;
+}
+
+.speaker-host {
+    color: var(--bakelite-brown);
+    font-weight: 900;
+    font-family: var(--font-console);
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    display: block;
+    margin-top: 1rem;
+    letter-spacing: 1px;
+}
+
+.speaker-expert {
+    color: var(--dial-amber);
+    font-weight: 900;
+    font-family: var(--font-console);
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    display: block;
+    margin-top: 1rem;
+    letter-spacing: 1px;
+}
+
+.speaker-host:first-child,
+.speaker-expert:first-child {
+    margin-top: 0;
+}

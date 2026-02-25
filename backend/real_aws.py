@@ -134,10 +134,13 @@ class RealAWSService:
         try:
             model_id = "amazon.nova-micro-v1:0"
             system_prompt = (
-                "You are an AI news analyst. Your task is to extract insights from an article and return them in JSON format.\n"
+                "You are an AI news analyst ensemble. Your task is to extract insights from an article and return them in JSON format.\n"
+                "The 'script' part must be a professional dialogue between two people: [HOST] and [EXPERT].\n"
+                "- [HOST]: Inquisitive, sets the stage, and asks the expert to clarify.\n"
+                "- [EXPERT]: Explains the news in simple, precise, and authoritative terms.\n\n"
                 "Return a JSON object with exactly these keys:\n"
-                "- 'script': A punchy, dramatic sentence vintage radio script (1940s style).\n"
-                "- 'summary': A 1-3 paragraph professional summary of the core news.\n"
+                "- 'script': A dialogue script using [HOST] and [EXPERT] markers. (e.g. '[HOST]: Welcome to the show. Can you explain X? [EXPERT]: Certainly, Host. X is about...')\n"
+                "- 'summary': A 1-2 paragraph professional summary for visual reading.\n"
                 "- 'key_points': A list of the most important facts as bullet points.\n"
                 "- 'tldr': A single, punchy 'too long didn't read' sentence."
             )
@@ -163,17 +166,32 @@ class RealAWSService:
             
             # Robust JSON extraction: Find the first '{' and last '}'
             try:
+                # Remove common AI prefixes like "Here is the JSON:"
                 start_idx = raw_text.find('{')
                 end_idx = raw_text.rfind('}')
                 if start_idx != -1 and end_idx != -1:
                     clean_json = raw_text[start_idx:end_idx + 1]
-                    data = json.loads(clean_json)
+                    # Replace accidental newlines within string values that break JSON
+                    # Bedrock sometimes adds raw newlines in summaries
+                    data = json.loads(clean_json, strict=False)
+                    
+                    # Normalize 'script' to string if it's a list
+                    if 'script' in data and isinstance(data['script'], list):
+                        data['script'] = " ".join(data['script'])
+                        
                     return data
                 else:
                     raise ValueError("No JSON object found in response")
             except Exception as e:
-                print(f"DEBUG ERROR: JSON Parse failed on raw text. Error: {e}")
-                raise
+                print(f"DEBUG ERROR: JSON Parse failed. Attempting cleanup. Error: {e}")
+                import re
+                # Try a more aggressive regex cleanup for JSON
+                try:
+                    # Remove potential trailing commas before closing braces
+                    clean_json = re.sub(r',\s*([\]}])', r'\1', clean_json)
+                    return json.loads(clean_json, strict=False)
+                except:
+                    raise
                 
         except Exception as e:
             print(f"Bedrock Error: {e}. Falling back to simple summary.")
@@ -185,18 +203,69 @@ class RealAWSService:
             }
 
     def generate_speech(self, text: str) -> bytes:
-        """Converts text to speech using AWS Polly"""
+        """Converts text to speech using AWS Polly with Multi-Voice support via separate calls"""
         try:
-            # 'Matthew' is a clear, authoritative male voice good for news reporting
-            response = self.polly.synthesize_speech(
-                Text=text,
-                OutputFormat="mp3",
-                VoiceId="Matthew",
-                Engine="standard"
-            )
-            return response['AudioStream'].read()
+            # Handle cases where Bedrock returns the script as a list instead of a string
+            if isinstance(text, list):
+                text = " ".join(text)
+            
+            # Check if text contains [HOST] or [EXPERT] markers
+            if "[HOST]" in text or "[EXPERT]" in text:
+                print("DEBUG: Generating Multi-Voice audio via segment concatenation")
+                
+                # Split text into segments by [HOST] and [EXPERT] markers
+                # Using regex to find all segments
+                import re
+                pattern = r'(\[HOST\]:|\[EXPERT\]:|\[HOST\]|\[EXPERT\])'
+                parts = re.split(pattern, text)
+                
+                combined_audio = b""
+                current_voice = "Matthew" # Default
+                
+                for part in parts:
+                    clean_part = part.strip()
+                    if not clean_part: continue
+                    
+                    if "[HOST]" in clean_part:
+                        current_voice = "Matthew"
+                        continue
+                    elif "[EXPERT]" in clean_part:
+                        current_voice = "Joanna"
+                        continue
+                        
+                    # This is the actual text segment
+                    try:
+                        resp = self.polly.synthesize_speech(
+                            Text=clean_part,
+                            OutputFormat="mp3",
+                            VoiceId=current_voice,
+                            Engine="neural"
+                        )
+                        combined_audio += resp['AudioStream'].read()
+                    except Exception as e:
+                        print(f"DEBUG: Segment synthesis failed for voice {current_voice}: {e}")
+                        # Fallback to standard if neural fails
+                        resp = self.polly.synthesize_speech(
+                            Text=clean_part,
+                            OutputFormat="mp3",
+                            VoiceId=current_voice,
+                            Engine="standard"
+                        )
+                        combined_audio += resp['AudioStream'].read()
+                
+                return combined_audio
+            else:
+                # Legacy / Single Voice
+                response = self.polly.synthesize_speech(
+                    Text=text,
+                    OutputFormat="mp3",
+                    VoiceId="Matthew",
+                    Engine="neural"
+                )
+                return response['AudioStream'].read()
+                
         except Exception as e:
-            print(f"Polly Error: {e}")
+            print(f"Polly Global Error: {e}")
             return None
 
     # --- Cognito (Authentication) ---
