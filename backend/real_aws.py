@@ -134,12 +134,15 @@ class RealAWSService:
         try:
             model_id = "amazon.nova-micro-v1:0"
             system_prompt = (
-                "You are an AI news analyst ensemble. Your task is to extract insights from an article and return them in JSON format.\n"
+                "You are an AI news analyst ensemble. Your task is to extract insights from an article and return them in VALID JSON format.\n"
                 "The 'script' part must be a professional dialogue between two people: [HOST] and [EXPERT].\n"
                 "- [HOST]: Inquisitive, sets the stage, and asks the expert to clarify.\n"
                 "- [EXPERT]: Explains the news in simple, precise, and authoritative terms.\n\n"
+                "CRITICAL: Do not include ANY text before or after the JSON. \n"
+                "Ensure all quotes inside strings are correctly escaped with a backslash (\\\"). \n"
+                "Do not include raw newlines within JSON string values; use '\\n' instead.\n\n"
                 "Return a JSON object with exactly these keys:\n"
-                "- 'script': A dialogue script using [HOST] and [EXPERT] markers. (e.g. '[HOST]: Welcome to the show. Can you explain X? [EXPERT]: Certainly, Host. X is about...')\n"
+                "- 'script': A dialogue script using [HOST] and [EXPERT] markers.\n"
                 "- 'summary': A 1-2 paragraph professional summary for visual reading.\n"
                 "- 'key_points': A list of the most important facts as bullet points.\n"
                 "- 'tldr': A single, punchy 'too long didn't read' sentence."
@@ -166,30 +169,50 @@ class RealAWSService:
             
             # Robust JSON extraction: Find the first '{' and last '}'
             try:
-                # Remove common AI prefixes like "Here is the JSON:"
+                # 1. Basic Cleaning
                 start_idx = raw_text.find('{')
                 end_idx = raw_text.rfind('}')
-                if start_idx != -1 and end_idx != -1:
-                    clean_json = raw_text[start_idx:end_idx + 1]
-                    # Replace accidental newlines within string values that break JSON
-                    # Bedrock sometimes adds raw newlines in summaries
-                    data = json.loads(clean_json, strict=False)
-                    
-                    # Normalize 'script' to string if it's a list
-                    if 'script' in data and isinstance(data['script'], list):
-                        data['script'] = " ".join(data['script'])
-                        
-                    return data
-                else:
+                if start_idx == -1 or end_idx == -1:
                     raise ValueError("No JSON object found in response")
-            except Exception as e:
-                print(f"DEBUG ERROR: JSON Parse failed. Attempting cleanup. Error: {e}")
+                
+                clean_json = raw_text[start_idx:end_idx + 1]
+                
+                # 2. Advanced Sanitization for Bedrock hallucinations
+                # Replace raw newlines inside quotes with \n (very common issue)
+                # But keep newlines between keys/values
+                sanitized_json = ""
+                in_string = False
+                i = 0
+                while i < len(clean_json):
+                    char = clean_json[i]
+                    if char == '"' and (i == 0 or clean_json[i-1] != '\\'):
+                        in_string = not in_string
+                    
+                    if in_string and char == '\n':
+                        sanitized_json += "\\n"
+                    elif in_string and char == '\t':
+                        sanitized_json += "\\t"
+                    else:
+                        sanitized_json += char
+                    i += 1
+                
+                # 3. Handle trailing commas before closing braces/brackets
                 import re
-                # Try a more aggressive regex cleanup for JSON
+                sanitized_json = re.sub(r',\s*([\]}])', r'\1', sanitized_json)
+                
+                data = json.loads(sanitized_json, strict=False)
+                
+                # Normalize 'script' to string if it's a list
+                if 'script' in data and isinstance(data['script'], list):
+                    data['script'] = " ".join(data['script'])
+                    
+                return data
+                
+            except Exception as e:
+                print(f"DEBUG ERROR: JSON Parse failed after deep cleanup. Error: {e}")
+                # Last resort: try just raw parsing if cleanup failed
                 try:
-                    # Remove potential trailing commas before closing braces
-                    clean_json = re.sub(r',\s*([\]}])', r'\1', clean_json)
-                    return json.loads(clean_json, strict=False)
+                    return json.loads(raw_text[raw_text.find('{'):raw_text.rfind('}')+1], strict=False)
                 except:
                     raise
                 

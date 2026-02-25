@@ -186,7 +186,8 @@ async def generate_audio(request: Request, article_id: str):
             "status": "cached",
             "summary": article_data.get("summary"),
             "key_points": article_data.get("key_points"),
-            "tldr": article_data.get("tldr")
+            "tldr": article_data.get("tldr"),
+            "script": article_data.get("script")
         }
 
     # 3. If we have the article in memory, generate it!
@@ -231,7 +232,8 @@ async def generate_audio(request: Request, article_id: str):
         "time": time,
         "summary": insights.get("summary", ""),
         "key_points": insights.get("key_points", []),
-        "tldr": insights.get("tldr", "")
+        "tldr": insights.get("tldr", ""),
+        "script": insights.get("script", "")
     }, user_id=user)
     
     print(f"DEBUG: Success! Audio generated and saved for {article_id}")
@@ -240,7 +242,8 @@ async def generate_audio(request: Request, article_id: str):
         "status": "generated",
         "summary": insights.get("summary"),
         "key_points": insights.get("key_points"),
-        "tldr": insights.get("tldr")
+        "tldr": insights.get("tldr"),
+        "script": insights.get("script")
     }
 
 @app.post("/api/process_link")
