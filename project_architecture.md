@@ -1,3 +1,4 @@
+```mermaid
 flowchart TD
     subgraph External [External / User Layer]
         User((End User\nBrowser))
