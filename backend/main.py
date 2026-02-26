@@ -119,12 +119,13 @@ def admin_dashboard(request: Request):
 
 @app.get("/admin/users")
 def admin_users(request: Request):
+    user = request.cookies.get("session")
     is_admin = request.cookies.get("is_admin") == "true"
     if not is_admin: return RedirectResponse(url="/")
     
     aws_service = RealAWSService()
     users = aws_service.list_all_users()
-    return templates.TemplateResponse("admin_users.html", {"request": request, "users": users})
+    return templates.TemplateResponse("admin_users.html", {"request": request, "user": user, "users": users})
 
 @app.post("/admin/users/toggle")
 async def toggle_user(request: Request, username: str = Form(...), enabled: str = Form(...)):
@@ -138,12 +139,13 @@ async def toggle_user(request: Request, username: str = Form(...), enabled: str 
 
 @app.get("/admin/podcasts")
 def admin_podcasts(request: Request):
+    user = request.cookies.get("session")
     is_admin = request.cookies.get("is_admin") == "true"
     if not is_admin: return RedirectResponse(url="/")
     
     aws_service = RealAWSService()
     podcasts = aws_service.get_all_podcasts()
-    return templates.TemplateResponse("admin_podcasts.html", {"request": request, "podcasts": podcasts})
+    return templates.TemplateResponse("admin_podcasts.html", {"request": request, "user": user, "podcasts": podcasts})
 
 @app.post("/admin/podcasts/delete/{article_id}")
 async def delete_podcast(request: Request, article_id: str):

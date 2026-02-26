@@ -1,15 +1,27 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+    .btn-silence {
+        background-color: #8b0000 !important;
+        color: #fff !important;
+    }
+
+    .btn-retune {
+        background-color: #006400 !important;
+        color: #fff !important;
+    }
+</style>
 <div class="row">
     <div class="col-md-12">
         <h3 class="h4 mb-4 border-bottom border-dark pb-2" style="letter-spacing: 2px;">NETWORK REGISTRY: OPERATOR LOGS
         </h3>
 
-        {% if request.query_params.get('msg') %}
+        {% set status_msg = request.query_params.get('msg') %}
+        {% if status_msg %}
         <div class="alert alert-success bg-transparent border-success text-success small mb-4"
             style="font-family: var(--font-console);">
-            <i class="bi bi-check-circle me-2"></i> DISPATCH: {{ request.query_params.get('msg') }}
+            <i class="bi bi-check-circle me-2"></i> DISPATCH: {{ status_msg }}
         </div>
         {% endif %}
 
@@ -26,13 +38,13 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for user in users %}
+                    {% for registry_user in users %}
                     <tr style="border-bottom: 1px solid rgba(0,0,0,0.1);">
-                        <td class="ps-4 fw-bold">{{ user.username }}</td>
-                        <td class="small">{{ user.email }}</td>
-                        <td class="small">{{ user.created }}</td>
+                        <td class="ps-4 fw-bold">{{ registry_user.username }}</td>
+                        <td class="small">{{ registry_user.email }}</td>
+                        <td class="small">{{ registry_user.created }}</td>
                         <td>
-                            {% if user.enabled %}
+                            {% if registry_user.enabled %}
                             <span class="text-success fw-bold small">[ ACTIVE ]</span>
                             {% else %}
                             <span class="text-danger fw-bold small">[ SILENCED ]</span>
@@ -40,11 +52,14 @@
                         </td>
                         <td class="text-end pe-4">
                             <form action="/admin/users/toggle" method="POST" style="display:inline;">
-                                <input type="hidden" name="username" value="{{ user.username }}">
-                                <input type="hidden" name="enabled" value="{{ 'false' if user.enabled else 'true' }}">
-                                <button type="submit" class="console-btn py-1"
-                                    style="font-size: 0.7rem; background: {{ '#8b0000' if user.enabled else '#006400' }}; color: #fff;">
-                                    {{ 'SILENCE' if user.enabled else 'RE-TUNE' }}
+                                <input type="hidden" name="username" value="{{ registry_user.username }}">
+                                {% set toggle_val = 'false' if registry_user.enabled else 'true' %}
+                                {% set button_text = 'SILENCE' if registry_user.enabled else 'RE-TUNE' %}
+                                {% set button_class = 'btn-silence' if registry_user.enabled else 'btn-retune' %}
+                                <input type="hidden" name="enabled" value="{{ toggle_val }}">
+                                <button type="submit" class="console-btn py-1 {{ button_class }}"
+                                    style="font-size: 0.7rem;">
+                                    {{ button_text }}
                                 </button>
                             </form>
                         </td>
