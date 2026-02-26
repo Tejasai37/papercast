@@ -1,50 +1,36 @@
-flowchart LR
-    %% Colors and Styles
-    classDef aws fill:#FF9900,stroke:#232F3E,stroke-width:2px,color:white;
-    classDef ai fill:#00A4A6,stroke:#232F3E,stroke-width:2px,color:white;
-    classDef db fill:#3B48CC,stroke:#232F3E,stroke-width:2px,color:white;
-    classDef default fill:#fff,stroke:#333,stroke-width:2px;
-
-    %% External
-    User((End User))
-    
-    %% AWS Cloud
-    subgraph AWS [AWS Cloud]
-        Cognito[Amazon Cognito<br/>Auth] ::: aws
-        
-        subgraph VPC [VPC - Public Subnets]
-            IGW[Internet Gateway]
-            ALB[Application Load<br/>Balancer] ::: aws
-            
-            subgraph ASG [Auto Scaling Group]
-                EC2[EC2 Instance<br/>Python Web App] ::: aws
-            end
-        end
-
-        subgraph AI_Services [AI Processing]
-            Bedrock[Amazon Bedrock<br/>Script Gen] ::: ai
-            Polly[Amazon Polly<br/>Audio Gen] ::: ai
-        end
-
-        subgraph Storage [Data Storage]
-            DynamoDB[(Amazon DynamoDB<br/>Metadata)] ::: db
-            S3[(Amazon S3<br/>Audio Files)] ::: db
-        end
+flowchart TD
+    subgraph External [External / User Layer]
+        User((End User\nBrowser))
+        Cognito[Amazon Cognito\nAuth / Sign Up]
     end
 
-    %% Flows
-    User <-->|1. Auth| Cognito
-    User -->|2. HTTP Request| IGW
-    IGW --> ALB
-    ALB --> EC2
-    
-    EC2 -->|3. Send Text| Bedrock
-    Bedrock -->|Returns Script| EC2
-    
-    EC2 -->|4. Send Script| Polly
-    Polly -->|Returns Audio| EC2
-    
-    EC2 -->|5. Save Meta| DynamoDB
-    EC2 -->|6. Save .mp3| S3
-    
-    User <..>|7. Stream Audio<br/>(Pre-signed URL)| S3
+    User -->|1. Authenticates| Cognito
+
+    subgraph AWS [AWS Cloud]
+        subgraph VPC [VPC - Virtual Private Cloud]
+            IGW([Internet Gateway])
+            
+            subgraph Subnets [Public Subnets - Multi-AZ]
+                ALB[[Application Load Balancer]]
+                EC2(EC2 Instances - ASG\nPython/Gunicorn\nIAM Role Attached)
+            end
+            
+            IGW -->|Routes inbound traffic| ALB
+            ALB -->|Forwards HTTP traffic| EC2
+        end
+
+        subgraph Backend [Data and AI Services Layer]
+            Bedrock{Amazon Bedrock\nNova Micro}
+            Polly{Amazon Polly\nAudio Synthesis}
+            S3[(Amazon S3\nAudio Storage)]
+            DB[(Amazon DynamoDB\nMetadata)]
+        end
+
+        EC2 -->|3. Sends raw article & gets dialogue script| Bedrock
+        EC2 -->|4. Sends script & gets .mp3 audio| Polly
+        EC2 -->|5. Saves .mp3 audio file| S3
+        EC2 -->|6. Saves Metadata: Summary, Keys, URL| DB
+    end
+
+    User -->|2. HTTP Request via ALB DNS| IGW
+    S3 -.->|7. Streams audio securely\nvia Pre-signed URL| User
