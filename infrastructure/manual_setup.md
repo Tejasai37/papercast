@@ -347,6 +347,10 @@ sudo systemctl daemon-reload
 sudo systemctl start papercast
 sudo systemctl enable papercast
 ```
+- Verify the service is running:
+```bash
+sudo systemctl status papercast
+```
 
 ### 12.6 Setup Nginx Reverse Proxy
 - Create Nginx config:
@@ -370,6 +374,10 @@ server {
 ```bash
 sudo systemctl restart nginx
 sudo systemctl enable nginx
+```
+- Verify the service is running:
+```bash
+sudo systemctl status nginx
 ```
 
 ---
