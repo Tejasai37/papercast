@@ -12,16 +12,16 @@ Papercast leverages Generative AI to convert trending news articles into high-qu
 - **Database**: Amazon DynamoDB (Metadata & Caching)
 - **Storage**: Amazon S3 (Audio artifacts)
 - **Auth**: Amazon Cognito (JWT & RBAC)
-- **Infrastructure**: AWS VPC, EC2 (ASG/ALB), Route 53
+- **Infrastructure**: AWS VPC, EC2 (ASG/ALB)
 
 ---
 
 ## Phase 1: Basic Project Structure & Local Setup
 *Goal: Establish the repository and local development environment.*
 
-- [ ] **1.1 Setup Project Directory**: Create folders for `frontend` and `backend`.
+- [ ] **1.1 Setup Project Directory**: Create a `backend` folder containing `templates` and `static` directories for Jinja2 SSR.
 - [ ] **1.2 Backend Initialization**: Initialize a FastAPI project with dependencies (`fastapi`, `uvicorn`, `boto3`, `pydantic`).
-- [ ] **1.3 Frontend Initialization**: Initialize a React project using Vite.
+- [ ] **1.3 Frontend Templates**: Create Jinja2 templates for the FastAPI backend to render the dashboard.
 - [ ] **1.4 Version Control**: Initialize Git and draft `.gitignore` files.
 
 ## Phase 2: AWS Infrastructure (Cost-Optimized)
@@ -51,7 +51,7 @@ Papercast leverages Generative AI to convert trending news articles into high-qu
 *Goal: Create a clean UI using Bootstrap and custom JS.*
 
 - [ ] **4.1 Base Setup**: Create `base.html` with Bootstrap 5 CDN and custom `style.css`.
-- [ ] **4.2 Dashboard**: Build `index.html` with a responsive news grid.
+- [ ] **4.2 Dashboard**: Build `dashboard.html` with a responsive news grid.
 - [ ] **4.3 Interactions**: Enhance UI with Vanilla JS (e.g., fetch news, play audio).
 - [ ] **4.4 Audio Player**: Create a custom HTML5 audio player.
 
@@ -61,13 +61,13 @@ Papercast leverages Generative AI to convert trending news articles into high-qu
 - [ ] **5.1 User Pool**: Setup Amazon Cognito User Pool.
 - [ ] **5.2 RBAC**: Create `Admin` and `User` groups.
 - [ ] **5.3 JWT Middleware**: Implement backend middleware to validate Cognito tokens for every request.
-- [ ] **5.4 Frontend Auth**: Integrate AWS Amplify or a custom Cognito flow in React.
+- [ ] **5.4 Frontend Auth**: Integrate Cognito flow within the FastAPI endpoints using session cookies.
+## Phase 6: Deployment
 *Goal: Move from local to the cloud.*
 
-- [ ] **6.1 Dockerization**: Dockerize both Frontend and Backend.
+- [ ] **6.1 Manual App Deployment**: Setup FastAPI using Gunicorn as an application server and Nginx as a reverse proxy via systemd.
 - [ ] **6.2 EC2 Launch Templates**: Configure templates for ASG (including IAM roles for S3/DynamoDB/Polly/Bedrock access).
 - [ ] **6.3 Load Balancer Setup**: Deploy ALB and configure target groups for the EC2 instances.
-- [ ] **6.4 SSL & Route 53**: Connect domain and enable HTTPS via AWS Certificate Manager.
 
 
 ---

@@ -15,7 +15,7 @@ class NewsService:
         title_hash = hashlib.md5(title.encode('utf-8')).hexdigest()[:8]
         return f"{prefix}-{title_hash}"
 
-    def get_top_headlines(self, category: str = "general", country: str = "us") -> List[Dict]:
+    def get_top_headlines(self, category: str = "general", country: str = "in") -> List[Dict]:
         """Fetches top headlines from NewsAPI.org"""
         if not self.api_key:
             print("Warning: No News API Key provided. Returning empty list.")
