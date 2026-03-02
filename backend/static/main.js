@@ -4,6 +4,10 @@ async function generateAudio(articleId) {
     const button = document.querySelector(`button[onclick="generateAudio('${articleId}')"]`);
     const playerContainer = document.getElementById(`player-${articleId}`);
 
+    // Get the selected language from the UI if available, else default to English
+    const languageSelect = document.getElementById('language-select');
+    const selectedLanguage = languageSelect ? languageSelect.value : 'en';
+
     // UI Feedback: Loading State
     const originalText = button.innerHTML;
     button.disabled = true;
@@ -21,7 +25,11 @@ async function generateAudio(articleId) {
 
     try {
         const response = await fetch(`/api/generate_audio/${articleId}`, {
-            method: 'POST'
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ language: selectedLanguage })
         });
 
         const data = await response.json();
@@ -36,6 +44,22 @@ async function generateAudio(articleId) {
 
         // Format Key Points as bullets
         const keyPointsHtml = data.key_points ? data.key_points.map(p => `<li>${p}</li>`).join('') : '';
+
+        // Format Comprehend Entities
+        const entitiesHtml = (data.nlp_entities && data.nlp_entities.length > 0)
+            ? data.nlp_entities.map(e => `<span class="badge bg-secondary me-1 mb-1">${e}</span>`).join('')
+            : '<span class="text-muted small">No significant entities found.</span>';
+
+        // Format Comprehend Key Phrases
+        const phrasesHtml = (data.nlp_key_phrases && data.nlp_key_phrases.length > 0)
+            ? data.nlp_key_phrases.map(p => `<span class="badge border border-dark text-dark me-1 mb-1" style="background:transparent;">${p}</span>`).join('')
+            : '';
+
+        // Sentiment Badge Color Logic
+        let sentimentColor = "bg-secondary";
+        if (data.nlp_sentiment === "POSITIVE") sentimentColor = "bg-success";
+        else if (data.nlp_sentiment === "NEGATIVE") sentimentColor = "bg-danger";
+        else if (data.nlp_sentiment === "MIXED") sentimentColor = "bg-warning text-dark";
 
         // Format Script Dialogue
         const scriptHtml = data.script ? data.script
@@ -79,12 +103,24 @@ async function generateAudio(articleId) {
 
         <!-- Broadsheet Insights Section -->
         <div class="mt-4 p-4 border border-dark" style="background: rgba(0,0,0,0.03);">
-            <h6 class="text-uppercase fw-bold mb-3 small" style="letter-spacing: 2px;">Dispatch Summary</h6>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="text-uppercase fw-bold small mb-0" style="letter-spacing: 2px;">Dispatch Summary</h6>
+                ${data.nlp_sentiment ? `<span class="badge ${sentimentColor}">${data.nlp_sentiment} Sentiment</span>` : ''}
+            </div>
+            
             <p class="fw-bold mb-3" style="font-family: var(--font-header); font-size: 1.2rem;">${data.tldr || 'No short summary available.'}</p>
             
             <div class="news-body small">
                 <p>${data.summary || 'No detailed summary available.'}</p>
             </div>
+            
+            ${(entitiesHtml || phrasesHtml) ? `
+            <div class="mt-3 mb-3 p-3 bg-white border border-light shadow-sm">
+                <h6 class="text-uppercase fw-bold small mb-2" style="opacity: 0.7;">AI NLP Extraction</h6>
+                <div class="mb-2"><strong>Entities:</strong><br/> ${entitiesHtml}</div>
+                ${phrasesHtml ? `<div><strong>Keywords:</strong><br/> ${phrasesHtml}</div>` : ''}
+            </div>
+            ` : ''}
 
             <h6 class="text-uppercase fw-bold mt-4 mb-2 small" style="opacity: 0.6;">Key Dispatches</h6>
             <ul class="small ps-3 mb-4" style="font-family: var(--font-news);">

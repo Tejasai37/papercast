@@ -46,6 +46,9 @@ class RealAWSService:
         self.bedrock = boto3.client("bedrock-runtime", **session_kwargs)
         self.polly = boto3.client("polly", **session_kwargs)
 
+        self.comprehend = boto3.client("comprehend", **session_kwargs)
+        self.translate = boto3.client("translate", **session_kwargs)
+
     def _get_secret_hash(self, username):
         """Calculates the HMAC-SHA256 secret hash for Cognito"""
         if not self.config["client_secret"]:
@@ -128,7 +131,68 @@ class RealAWSService:
             print(f"DynamoDB Library Error: {e}")
             return []
 
-    # --- AI Services (Bedrock & Polly) ---
+    # --- AI Services (Comprehend, Bedrock, Polly) ---
+    def analyze_text_comprehend(self, text: str) -> dict:
+        """Uses Amazon Comprehend to extract sentiment, entities, and key phrases."""
+        try:
+            # Comprehend has a 5000 byte limit per request. 
+            # For simplicity in this demo, we'll truncate the text for analysis if it's too long
+            # Production apps should chunk the text and aggregate the results.
+            text_to_analyze = text[:4800] 
+            
+            print("DEBUG: Sending text to Comprehend...")
+            
+            # 1. Sentiment
+            sentiment_resp = self.comprehend.detect_sentiment(Text=text_to_analyze, LanguageCode='en')
+            sentiment = sentiment_resp['Sentiment']
+            
+            # 2. Key Phrases (Top 5)
+            phrases_resp = self.comprehend.detect_key_phrases(Text=text_to_analyze, LanguageCode='en')
+            key_phrases = [p['Text'] for p in phrases_resp['KeyPhrases'][:5]]
+            
+            # 3. Entities (Top 5 Unique Persons/Organizations/Locations)
+            entities_resp = self.comprehend.detect_entities(Text=text_to_analyze, LanguageCode='en')
+            entities = []
+            seen = set()
+            for e in entities_resp['Entities']:
+                if e['Type'] in ['PERSON', 'ORGANIZATION', 'LOCATION'] and e['Text'] not in seen:
+                    entities.append(f"{e['Text']} ({e['Type']})")
+                    seen.add(e['Text'])
+                    if len(entities) >= 5:
+                        break
+                        
+            return {
+                "sentiment": sentiment,
+                "key_phrases": key_phrases,
+                "entities": entities
+            }
+        except Exception as e:
+            print(f"Comprehend Error: {e}")
+            return {
+                "sentiment": "UNKNOWN",
+                "key_phrases": [],
+                "entities": []
+            }
+            
+    def translate_text(self, text: str, target_language: str = "en") -> str:
+        """Translates text to the target language using Amazon Translate."""
+        if target_language == "en" or not text:
+            return text
+            
+        try:
+            print(f"DEBUG: Translating text to {target_language}...")
+            
+            # Translate has a 10,000 byte limit, which is plenty for our scripts/summaries
+            response = self.translate.translate_text(
+                Text=text,
+                SourceLanguageCode="en", # Assuming English source from our Bedrock prompt
+                TargetLanguageCode=target_language
+            )
+            return response.get('TranslatedText', text)
+        except Exception as e:
+            print(f"Translate Error: {e}")
+            return text
+            
     def summarize_article(self, text: str) -> dict:
         """Uses Bedrock (Nova Micro) to generate a full suite of AI insights: Script, Summary, Key Points, and TLDR"""
         try:
@@ -178,27 +242,14 @@ class RealAWSService:
                 clean_json = raw_text[start_idx:end_idx + 1]
                 
                 # 2. Advanced Sanitization for Bedrock hallucinations
-                # Replace raw newlines inside quotes with \n (very common issue)
-                # But keep newlines between keys/values
-                sanitized_json = ""
-                in_string = False
-                i = 0
-                while i < len(clean_json):
-                    char = clean_json[i]
-                    if char == '"' and (i == 0 or clean_json[i-1] != '\\'):
-                        in_string = not in_string
-                    
-                    if in_string and char == '\n':
-                        sanitized_json += "\\n"
-                    elif in_string and char == '\t':
-                        sanitized_json += "\\t"
-                    else:
-                        sanitized_json += char
-                    i += 1
-                
-                # 3. Handle trailing commas before closing braces/brackets
                 import re
-                sanitized_json = re.sub(r',\s*([\]}])', r'\1', sanitized_json)
+                
+                # Fix trailing commas before closing braces/brackets
+                sanitized_json = re.sub(r',\s*([\]}])', r'\1', clean_json)
+                
+                # Fix Invalid JSON Escapes (e.g. \ followed by something not in " \ / b f n r t u)
+                # This double-escapes the backslash so the JSON parser accepts it as a literal backslash.
+                sanitized_json = re.sub(r'\\(?!["\\/bfnrtu])', r'\\\\', sanitized_json)
                 
                 data = json.loads(sanitized_json, strict=False)
                 

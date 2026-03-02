@@ -44,8 +44,21 @@
 
     <div class="row">
         <div class="col-12" style="max-width: 900px; margin: 0 auto;">
-            <h3 class="h4 mb-4 border-bottom border-dark pb-2" style="letter-spacing: 2px;">LATEST DISPATCHES: {{
-                current_category }}</h3>
+            <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-dark pb-2">
+                <div class="d-flex align-items-center gap-3">
+                    <h3 class="h4 mb-0" style="letter-spacing: 2px;">LATEST DISPATCHES: {{ current_category }}</h3>
+
+                    <!-- Language Selection Dropdown -->
+                    <select id="language-select" class="form-select form-select-sm bg-dark text-white border-secondary"
+                        style="width: auto; font-family: var(--font-console); font-size: 0.8rem; letter-spacing: 1px;">
+                        <option value="en">ENGLISH</option>
+                        <option value="es">ESPAÑOL</option>
+                        <option value="fr">FRANÇAIS</option>
+                        <option value="hi">HINDI</option>
+                    </select>
+                </div>
+
+            </div>
 
             <div id="news-container" class="broadsheet-grid">
                 {% for article in news %}

@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, Form, Response
+import uuid
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -31,8 +32,7 @@ async def login(request: Request, username: str = Form(...), password: str = For
     if auth_result:
         groups = aws_service.get_user_groups(username)
         is_admin = "admins" in groups
-        
-        response = RedirectResponse(url="/admin" if is_admin else "/", status_code=303)
+        response = RedirectResponse(url="/admin" if is_admin else "/dashboard", status_code=303)
         response.set_cookie(key="session", value=username, httponly=True)
         response.set_cookie(key="id_token", value=auth_result['IdToken'], httponly=True)
         response.set_cookie(key="is_admin", value="true" if is_admin else "false", httponly=True)
@@ -170,26 +170,43 @@ async def generate_audio(request: Request, article_id: str):
     """
     Endpoint to generate audio with Bedrock Summarization and Polly TTS.
     """
-    user = request.cookies.get("session", "anonymous")
-    print(f"DEBUG: Audio request for {article_id} by user {user}")
+    # Parse incoming JSON body for language selection
+    try:
+        body = await request.json()
+        target_language = body.get("language", "en")
+    except:
+        target_language = "en"
+        
+    user = request.cookies.get("session")
+    if not user:
+        return {"error": "Unauthorized. Please log in.", "status": "failed"}
+    print(f"DEBUG: Audio request for {article_id} by user {user} in language {target_language}")
     aws_service = RealAWSService()
     
     # 1. Try to get content from Memory Cache (Fresh Discovery)
     article = news_service.get_article_by_id(article_id)
     
     # 2. If not in memory, check DynamoDB (Already Generated)
-    article_data = aws_service.get_article_metadata(article_id)
+    # Note: If they request a DIFFERENT language than what's cached, we'd ideally regenerate.
+    # For this demo, we'll append the language to the ID to cache them separately.
+    cache_id = f"{article_id}_{target_language}" if target_language != "en" else article_id
+    
+    article_data = aws_service.get_article_metadata(cache_id)
     
     # Handle already completed podcasts (from DB)
     if article_data and article_data.get("status") == "completed" and article_data.get("audio_url"):
-        print(f"DEBUG: Found already completed podcast for {article_id}")
+        print(f"DEBUG: Found already completed podcast for {cache_id}")
         return {
             "audio_url": article_data["audio_url"], 
             "status": "cached",
             "summary": article_data.get("summary"),
             "key_points": article_data.get("key_points"),
             "tldr": article_data.get("tldr"),
-            "script": article_data.get("script")
+            "script": article_data.get("script"),
+            "nlp_sentiment": article_data.get("nlp_sentiment"),
+            "nlp_key_phrases": article_data.get("nlp_key_phrases", []),
+            "nlp_entities": article_data.get("nlp_entities", []),
+            "language": target_language
         }
 
     # 3. If we have the article in memory, generate it!
@@ -211,22 +228,41 @@ async def generate_audio(request: Request, article_id: str):
     print(f"DEBUG: Generating audio for: {title[:30]}...")
     
     # 3. Perform Generation
+    # Extract Comprehend Insights (Based on original English text)
+    nlp_insights = aws_service.analyze_text_comprehend(content)
+    
+    # Extract Summarization & Script via Bedrock (In English)
     insights = aws_service.summarize_article(content)
     
+    # Translation Step (If language is not English)
+    if target_language != "en":
+        print(f"DEBUG: Translating insights to {target_language}")
+        insights['script'] = aws_service.translate_text(insights['script'], target_language)
+        insights['summary'] = aws_service.translate_text(insights['summary'], target_language)
+        insights['tldr'] = aws_service.translate_text(insights['tldr'], target_language)
+        
+        # Translate Key points (list)
+        translated_points = []
+        for point in insights.get('key_points', []):
+            translated_points.append(aws_service.translate_text(point, target_language))
+        insights['key_points'] = translated_points
+    
+    # Generate Speech
     audio_bytes = aws_service.generate_speech(insights['script'])
     if not audio_bytes:
         print("DEBUG ERROR: Polly generation failed")
         return {"error": "Polly generation failed", "status": "failed"}
     
-    file_name = f"{article_id}.mp3"
+    file_name = f"{cache_id}.mp3"
     audio_url = aws_service.upload_audio(audio_bytes, file_name)
     if not audio_url:
         print("DEBUG ERROR: S3 upload failed")
         return {"error": "S3 upload failed", "status": "failed"}
     
     # 4. Save to DynamoDB ON-DEMAND (Only on successful generation)
-    aws_service.save_article_metadata(article_id, {
-        "article_id": article_id,
+    aws_service.save_article_metadata(cache_id, {
+        "article_id": article_id,  # Keep the original root ID
+        "language": target_language, # Tag the language
         "audio_url": audio_url,
         "status": "completed",
         "title": title,
@@ -235,22 +271,31 @@ async def generate_audio(request: Request, article_id: str):
         "summary": insights.get("summary", ""),
         "key_points": insights.get("key_points", []),
         "tldr": insights.get("tldr", ""),
-        "script": insights.get("script", "")
+        "script": insights.get("script", ""),
+        "nlp_sentiment": nlp_insights.get("sentiment"),
+        "nlp_key_phrases": nlp_insights.get("key_phrases"),
+        "nlp_entities": nlp_insights.get("entities")
     }, user_id=user)
     
-    print(f"DEBUG: Success! Audio generated and saved for {article_id}")
+    print(f"DEBUG: Success! Audio generated and saved for {cache_id}")
     return {
         "audio_url": audio_url, 
         "status": "generated",
         "summary": insights.get("summary"),
         "key_points": insights.get("key_points"),
         "tldr": insights.get("tldr"),
-        "script": insights.get("script")
+        "script": insights.get("script"),
+        "nlp_sentiment": nlp_insights.get("sentiment"),
+        "nlp_key_phrases": nlp_insights.get("key_phrases"),
+        "nlp_entities": nlp_insights.get("entities"),
+        "language": target_language
     }
 
 @app.post("/api/process_link")
 async def process_link(request: Request, url: str = Form(...)):
-    user = request.cookies.get("session", "anonymous")
+    user = request.cookies.get("session")
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
     article = news_service.extract_article(url)
     
     # Also fetch general headlines to fill the rest of the page
@@ -274,6 +319,7 @@ async def process_link(request: Request, url: str = Form(...)):
         "news": all_news,
         "current_category": "Custom Broadcast"
     })
+
 
 @app.get("/library")
 def library_page(request: Request):
