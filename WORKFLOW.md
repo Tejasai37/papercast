@@ -14,8 +14,11 @@ flowchart LR
     Cognito --> Dashboard
     Login -- Yes --> Dashboard(["User opens<br>Dashboard"])
     
+    %% Live Feed
+    Dashboard <--> GNews(("GNews API<br>fetches live articles"))
+    
     %% Input
-    Dashboard --> Request["User pastes<br>News Article URL"]
+    GNews --> Request["User selects / pastes<br>News Article URL"]
     
     %% Cache Check
     Request --> Cache{"Check<br>DynamoDB<br>Cache"}
