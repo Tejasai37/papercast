@@ -7,38 +7,38 @@ This flowchart illustrates the step-by-step human-readable data flow as a user i
 ```mermaid
 flowchart LR
     %% User Entry
-    Start([User visits PaperCast]) --> Login{Logged In?}
+    Start(["User visits<br>PaperCast"]) --> Login{"Logged<br>In?"}
     
     %% Auth
-    Login -- No --> Cognito[Amazon Cognito handles Secure Login]
+    Login -- No --> Cognito["Amazon Cognito<br>Secure Login"]
     Cognito --> Dashboard
-    Login -- Yes --> Dashboard([User opens Dashboard])
+    Login -- Yes --> Dashboard(["User opens<br>Dashboard"])
     
     %% Input
-    Dashboard --> Request[User pastes a News Article URL]
+    Dashboard --> Request["User pastes<br>News Article URL"]
     
     %% Cache Check
-    Request --> Cache{Check DynamoDB Cache}
+    Request --> Cache{"Check<br>DynamoDB<br>Cache"}
     
     %% Cache Hit
-    Cache -- Audio Already Exists --> Deliver[Deliver existing S3 Audio Link]
+    Cache -- "Audio Already Exists" --> Deliver["Deliver existing<br>S3 Audio Link"]
     
     %% Cache Miss Flow (AI Pipeline)
-    Cache -- New Article --> Comprehend[Amazon Comprehend analyzes themes & sentiment]
-    Comprehend --> Bedrock[Amazon Bedrock writes the Radio Script]
-    Bedrock --> Translate{Translate?}
-    Translate -- Yes --> AmazonTranslate[Amazon Translate converts script to local language]
+    Cache -- "New Article" --> Comprehend["Amazon Comprehend<br>analyzes sentiment"]
+    Comprehend --> Bedrock["Amazon Bedrock<br>writes Radio Script"]
+    Bedrock --> Translate{"Translate<br>Language?"}
+    Translate -- Yes --> AmazonTranslate["Amazon Translate<br>converts script"]
     Translate -- No --> Polly
     AmazonTranslate --> Polly
-    Polly[Amazon Polly synthesizes text into Neural Speech MP3]
+    Polly["Amazon Polly<br>synthesizes MP3"]
     
     %% Storage
-    Polly --> SaveDb[Save Podcast details to DynamoDB]
-    SaveDb --> SaveS3[Save MP3 file to Amazon S3]
+    Polly --> SaveDb["Save details<br>to DynamoDB"]
+    SaveDb --> SaveS3["Save MP3<br>to Amazon S3"]
     SaveS3 --> Deliver
     
     %% Output
-    Deliver --> Player([User listens to Podcast!])
+    Deliver --> Player(["User listens<br>to Podcast!"])
 ```
 
 ## Key Workflow Features
