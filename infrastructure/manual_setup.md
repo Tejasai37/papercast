@@ -189,7 +189,7 @@ S3_BUCKET_NAME=...
 ```bash
 sudo nano /etc/systemd/system/papercast.service
 ```
-- Paste this content:
+- Paste this content (which uses our `deploy/gunicorn_conf.py` file):
 ```ini
 [Unit]
 Description=Gunicorn instance to serve Papercast
@@ -200,7 +200,7 @@ User=ec2-user
 Group=ec2-user
 WorkingDirectory=/home/ec2-user/papercast
 Environment="PATH=/home/ec2-user/papercast/papercast_venv/bin"
-ExecStart=/home/ec2-user/papercast/papercast_venv/bin/gunicorn --workers 3 --bind 0.0.0.0:8000 backend.main:app -k uvicorn.workers.UvicornWorker
+ExecStart=/home/ec2-user/papercast/papercast_venv/bin/gunicorn -c deploy/gunicorn_conf.py backend.main:app
 
 [Install]
 WantedBy=multi-user.target
@@ -217,22 +217,9 @@ sudo systemctl status papercast
 ```
 
 ### 6.7 Setup Nginx Reverse Proxy
-- Create Nginx config:
+- Instead of creating a simple configuration from scratch, copy the advanced configuration from our repository. This file is already configured with a 120-second timeout to handle slow AI generation workflows and has proper static file routing:
 ```bash
-sudo nano /etc/nginx/conf.d/papercast.conf
-```
-- Paste this content:
-```nginx
-server {
-    listen 80;
-    server_name _;
-
-    location / {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
+sudo cp /home/ec2-user/papercast/deploy/nginx.conf /etc/nginx/conf.d/papercast.conf
 ```
 - Restart Nginx:
 ```bash

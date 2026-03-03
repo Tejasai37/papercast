@@ -45,7 +45,6 @@ COGNITO_CLIENT_ID=your_client_id
 
 # System Config
 NEWS_API_KEY=your_gnews_key
-SECRET_KEY=generate_a_random_jwt_secret
 ```
 
 ### 2. Installation
@@ -100,7 +99,7 @@ Create a systemd service file to manage the FastAPI application:
 ```bash
 sudo nano /etc/systemd/system/papercast.service
 ```
-Add the following configuration (adjusting for your specific user/path):
+Add the following configuration (it references the `deploy/gunicorn_conf.py` file included in this repo):
 ```ini
 [Unit]
 Description=Gunicorn instance to serve Papercast
@@ -111,7 +110,8 @@ User=ec2-user
 Group=ec2-user
 WorkingDirectory=/home/ec2-user/papercast
 Environment="PATH=/home/ec2-user/papercast/papercast_venv/bin"
-ExecStart=/home/ec2-user/papercast/papercast_venv/bin/gunicorn --workers 3 --bind 0.0.0.0:8000 backend.main:app -k uvicorn.workers.UvicornWorker
+# Uses the pre-configured gunicorn_conf.py file
+ExecStart=/home/ec2-user/papercast/papercast_venv/bin/gunicorn -c deploy/gunicorn_conf.py backend.main:app
 
 [Install]
 WantedBy=multi-user.target
@@ -123,22 +123,10 @@ sudo systemctl enable --now papercast
 ```
 
 ### 4. Reverse Proxy (Nginx)
-Configure Nginx to route external port 80 traffic to the internal Gunicorn server:
+Instead of creating a new Nginx block from scratch, we can copy the advanced configuration provided in the `deploy/` folder (it includes optimizations for large audio file buffers and static file caching):
 ```bash
-sudo nano /etc/nginx/conf.d/papercast.conf
-```
-Add the routing block:
-```nginx
-server {
-    listen 80;
-    server_name _;
-
-    location / {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
+# Copy the repo's nginx config to the system directory
+sudo cp /home/ec2-user/papercast/deploy/nginx.conf /etc/nginx/conf.d/papercast.conf
 ```
 Enable and start Nginx:
 ```bash
