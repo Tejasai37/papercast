@@ -6,26 +6,19 @@ This document provides a simple, high-level overview of the systems required to 
 
 ```mermaid
 flowchart TD
-    %% Define Styles (Removed hardcoded colors for native Light/Dark Mode support)
-    classDef client stroke-width:2px;
-    classDef server stroke-width:2px;
-    classDef awsAuth stroke-width:2px,stroke-dasharray: 5 5;
-    classDef awsAI stroke-width:2px;
-    classDef awsStorage stroke-width:2px;
-
     %% Nodes
-    Browser["Web Browser (User)"]:::client
-    EC2["Amazon EC2 Server<br>(Nginx + FastAPI)"]:::server
+    Browser["Web Browser (User)"]
+    EC2["Amazon EC2 Server<br>(Nginx + FastAPI)"]
     
-    Cognito["Amazon Cognito<br>(Login & Roles)"]:::awsAuth
+    Cognito["Amazon Cognito<br>(Login & Roles)"]
     
-    Bedrock["Amazon Bedrock<br>(Generates Script)"]:::awsAI
-    Polly["Amazon Polly<br>(Creates Audio)"]:::awsAI
-    Translate["Amazon Translate<br>(Language Localization)"]:::awsAI
-    Comprehend["Amazon Comprehend<br>(Text Analysis)"]:::awsAI
+    Bedrock["Amazon Bedrock<br>(Generates Script)"]
+    Polly["Amazon Polly<br>(Creates Audio)"]
+    Translate["Amazon Translate<br>(Language Localization)"]
+    Comprehend["Amazon Comprehend<br>(Text Analysis)"]
     
-    DynamoDB["Amazon DynamoDB<br>(Database Cache)"]:::awsStorage
-    S3["Amazon S3<br>(Audio Files Sandbox)"]:::awsStorage
+    DynamoDB["Amazon DynamoDB<br>(Database Cache)"]
+    S3["Amazon S3<br>(Audio Files Sandbox)"]
 
     %% Core Flow
     Browser -->|1. Visits Website| EC2
