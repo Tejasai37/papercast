@@ -7,42 +7,43 @@ Papercast leverages Generative AI to convert trending news articles into high-qu
 
 ### Tech Stack
 - **Frontend**: Vanilla JS, Bootstrap 5, Jinja2 Templates (HTML)
-- **Backend**: FastAPI (Python), Boto3
-- **AI Services**: Amazon Bedrock (Summarization), Amazon Polly (Neural Text-to-Speech)
+- **Backend / Server**: FastAPI (Python), Boto3 (AWS SDK), Gunicorn, Nginx
+- **External Data**: GNews API
+- **AI Services**: Amazon Bedrock (Nova Micro), Amazon Comprehend (NLP Sentiment & Entities), Amazon Translate (Language Localization), Amazon Polly (Neural Text-to-Speech)
 - **Database**: Amazon DynamoDB (Metadata & Caching)
 - **Storage**: Amazon S3 (Audio artifacts)
 - **Auth**: Amazon Cognito (JWT & RBAC)
-- **Infrastructure**: AWS VPC, EC2 (ASG/ALB)
+- **Infrastructure**: Amazon EC2 (Amazon Linux 2023)
 
 ---
 
 ## Phase 1: Basic Project Structure & Local Setup
 *Goal: Establish the repository and local development environment.*
 
-- [ ] **1.1 Setup Project Directory**: Create a `backend` folder containing `templates` and `static` directories for Jinja2 SSR.
-- [ ] **1.2 Backend Initialization**: Initialize a FastAPI project with dependencies (`fastapi`, `uvicorn`, `boto3`, `pydantic`).
-- [ ] **1.3 Frontend Templates**: Create Jinja2 templates for the FastAPI backend to render the dashboard.
-- [ ] **1.4 Version Control**: Initialize Git and draft `.gitignore` files.
+- [x] **1.1 Setup Project Directory**: Create a `backend` folder containing `templates` and `static` directories for Jinja2 SSR.
+- [x] **1.2 Backend Initialization**: Initialize a FastAPI project with dependencies (`fastapi`, `uvicorn`, `boto3`, `pydantic`).
+- [x] **1.3 Frontend Templates**: Create Jinja2 templates for the FastAPI backend to render the dashboard.
+- [x] **1.4 Version Control**: Initialize Git and draft `.gitignore` files.
 
 ## Phase 2: AWS Infrastructure (Cost-Optimized)
 *Goal: Build the network and security layer.*
 
-- [ ] **2.1 Custom VPC**: Create a VPC with **Public Subnets Only** (to avoid NAT Gateway costs).
-- [ ] **2.2 Security Groups**: 
-    - App SG: Restrict traffic to your IP (for dev) or allow HTTP/HTTPS.
-- [ ] **2.3 Amazon S3**: Create a bucket for audio file storage with appropriate lifecycle policies.
-- [ ] **2.4 Amazon DynamoDB**: Create a table (`PapercastCache`) with `ArticleID` as Partition Key.
+- [x] **2.1 Default VPC**: Utilize the pre-existing Default VPC in the AWS account.
+- [x] **2.2 Security Groups**: 
+    - App SG: Allow inbound HTTP (80) and SSH (22).
+- [x] **2.3 Amazon S3**: Create a bucket for audio file storage.
+- [x] **2.4 Amazon DynamoDB**: Create a table (`PapercastCache`) with `ArticleID` as Partition Key.
 
-**Note**: We are skipping NAT Gateways and Private Subnets for this phase to save ~$32/month.
+**Note**: We are utilizing the Default VPC and a single public subnet for this deployment, bypassing NAT Gateway costs to save ~$32/month.
 
 ## Phase 3: Backend API Development
 *Goal: Implement the core AI orchestration logic.*
 
-- [ ] **3.1 News Integration**: Implement a service to fetch news from an external API (e.g., NewsAPI.org).
-- [ ] **3.2 Bedrock Integration**: Implement the "Script Generator" module to summarize news content using LLMs.
-- [ ] **3.3 Polly Integration**: Implement the "Podcast Producer" module to convert text scripts to MP3.
-- [ ] **3.4 Caching Logic**: Implement logic to check DynamoDB/S3 before triggering AI processing.
-- [ ] **3.5 API Endpoints**:
+- [x] **3.1 News Integration**: Implement a service to fetch news from an external API (e.g., NewsAPI.org).
+- [x] **3.2 Bedrock Integration**: Implement the "Script Generator" module to summarize news content using LLMs.
+- [x] **3.3 Polly Integration**: Implement the "Podcast Producer" module to convert text scripts to MP3.
+- [x] **3.4 Caching Logic**: Implement logic to check DynamoDB/S3 before triggering AI processing.
+- [x] **3.5 API Endpoints**:
     - `GET /news`: Fetch trending articles.
     - `POST /generate`: Trigger podcast creation.
     - `GET /audio/{id}`: Fetch audio playback link.
@@ -50,10 +51,10 @@ Papercast leverages Generative AI to convert trending news articles into high-qu
 ## Phase 4: Frontend Development (Vanilla JS + Bootstrap)
 *Goal: Create a clean UI using Bootstrap and custom JS.*
 
-- [ ] **4.1 Base Setup**: Create `base.html` with Bootstrap 5 CDN and custom `style.css`.
-- [ ] **4.2 Dashboard**: Build `dashboard.html` with a responsive news grid.
-- [ ] **4.3 Interactions**: Enhance UI with Vanilla JS (e.g., fetch news, play audio).
-- [ ] **4.4 Audio Player**: Create a custom HTML5 audio player.
+- [x] **4.1 Base Setup**: Create `base.html` with Bootstrap 5 CDN and custom `style.css`.
+- [x] **4.2 Dashboard**: Build `dashboard.html` with a responsive news grid.
+- [x] **4.3 Interactions**: Enhance UI with Vanilla JS (e.g., fetch news, play audio).
+- [x] **4.4 Audio Player**: Create a custom HTML5 audio player.
 
 ## Phase 5: Authentication & Security
 *Goal: Secure the application with Cognito.*
@@ -65,9 +66,9 @@ Papercast leverages Generative AI to convert trending news articles into high-qu
 ## Phase 6: Deployment
 *Goal: Move from local to the cloud.*
 
-- [ ] **6.1 Manual App Deployment**: Setup FastAPI using Gunicorn as an application server and Nginx as a reverse proxy via systemd.
-- [ ] **6.2 EC2 Launch Templates**: Configure templates for ASG (including IAM roles for S3/DynamoDB/Polly/Bedrock access).
-- [ ] **6.3 Load Balancer Setup**: Deploy ALB and configure target groups for the EC2 instances.
+- [x] **6.1 Manual App Deployment**: Setup FastAPI on a single EC2 instance using Gunicorn as an application server and Nginx as a reverse proxy.
+- [x] **6.2 EC2 IAM Role**: Attach an IAM Instance Profile to the EC2 server with explicit permissions for S3, DynamoDB, Polly, Bedrock, Translate, and Comprehend access.
+- [x] **6.3 Nginx Configuration**: Optimize the Reverse Proxy to serve frontend static files and manage large MP3 buffer timeouts (120 seconds).
 
 ---
 
@@ -78,17 +79,17 @@ Papercast leverages Generative AI to convert trending news articles into high-qu
 1. **Global Cache vs Personal Library**: Currently, when User A generates an article, DynamoDB sets `UserID = User A`. If User B generates the *exact same* article, the system uses the global cache to save money/time, but the database still points to User A. **Result**: The podcast never shows up in User B's personal library.
 2. **Deletion Cascades**: If an Admin deletes a globally cached podcast that 10 users listen to, it breaks the library for all 10 users.
 
-### Proposed Solution: The "Subscribers" Array
+### Implemented Solution: The "Subscribers" Array
 Instead of tracking a single `UserID` string per podcast, we will track a mathematical Set of `subscribers`.
 
-#### [MODIFY] `backend/real_aws.py`
-- Modify `save_article_metadata` to use an `UpdateItem` command rather than `PutItem`. 
-- If the `ArticleID` is new, it creates the record and adds the `UserID` to a `subscribers` String Set (`SS`).
-- If the `ArticleID` already exists (Global Cache Hit), it simply appends the new `UserID` to the existing `subscribers` set.
-- Modify `get_user_library` to use `CONTAINS(subscribers, :user_id)` in the scan filter to accurately fetch any podcast a user has requested, regardless of who generated it first.
+#### `backend/real_aws.py`
+- [x] Modified `save_article_metadata` to use an `UpdateItem` command rather than `PutItem`. 
+- [x] If the `ArticleID` is new, it creates the record and adds the `UserID` to a `subscribers` String Set (`SS`).
+- [x] If the `ArticleID` already exists (Global Cache Hit), it simply appends the new `UserID` to the existing `subscribers` set.
+- [x] Modified `get_user_library` to use `CONTAINS(subscribers, :user_id)` in the scan filter to accurately fetch any podcast a user has requested, regardless of who generated it first.
 
-#### [MODIFY] `backend/main.py`
-- Update the `/api/generate_audio` cache-hit logic. Right now, if there is a cache hit, the server immediately returns the audioURL. We need to add a small step here to run the `save_article_metadata` update *before* returning, ensuring the user is successfully added to the `subscribers` list even on a cache hit.
+#### `backend/main.py`
+- [x] Updated the `/api/generate_audio` cache-hit logic to call `save_article_metadata` *before* returning early, ensuring the user is successfully added to the `subscribers` set even on an instant cache hit.
 
 ---
 
@@ -98,11 +99,11 @@ Instead of tracking a single `UserID` string per podcast, we will track a mathem
 ### High-Impact Services & Mitigation
 | Service | Cost Driver | Mitigation Strategy |
 | :--- | :--- | :--- |
-| **NAT Gateway** | ~$0.045/hour (~$32/mo) + Data processing | **Development Phase**: Deploy EC2 instances in **Public Subnets** to avoid NAT costs entirely. Secure with strict Security Groups. <br> **Production**: Use VPC Endpoints for S3/DynamoDB (Free) to reduce processed data. |
-| **Application Load Balancer (ALB)** | ~$0.0225/hour (~$16/mo) + LCU charges | **Dev/Test**: Stop ALB when not in use. Use direct Public IP for early testing. |
-| **Amazon Bedrock** | Per-token (Input/Output) | **Cache Summaries**: Store generated summaries in DynamoDB. Never re-summarize the same article. <br> **Model Selection**: Use `Titan Text Express` or `Claude Instant` for lower cost vs. `Claude 3 Sonnet`. |
-| **Amazon Polly** | Per-character | **Cache Audio**: Store MP3s in S3 `Standard-IA` (Infrequent Access). Check cache before generating. |
-| **Amazon EC2** | Hourly compute | **Instance Type**: Use `t2.micro` or `t3.micro` (Free Tier eligible: 750 hrs/mo). <br> **Spot Instances**: Use Spot Instances for the backend ASG (upto 90% savings). |
+| **Amazon Bedrock** | Per-token (Input/Output) | **Cache Summaries**: Store generated podcast metadata in DynamoDB. Never regenerate the same article. <br> **Model Selection**: Use `amazon.nova-micro-v1:0` for massive cost reduction vs. Opus/Sonnet models. |
+| **Amazon Polly** | Per-character | **Cache Audio**: Store MP3s in S3. Check cache before generating any text-to-speech. |
+| **Amazon Comprehend** | Per-character | **Text Truncation**: Only pass the first ~4800 characters of an article to the API (which establishes sufficient sentiment/entities) rather than the entire massive source text. |
+| **Amazon Translate** | Per-character | **Limit Scope**: Only translate the final, concise script and summary arrays rather than translating the entire raw news article. DynamoDB automatically separates cached language varieties by ID suffix (e.g. `1234_hi`). |
+| **Amazon EC2** | Hourly compute | **Instance Type**: Utilize a single `t2.micro` or `t3.micro` (Free Tier eligible: 750 hrs/mo) running Nginx/Gunicorn instead of an expensive Auto Scaling Group or Load Balancer. |
 
 ---
 
