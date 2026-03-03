@@ -69,6 +69,26 @@ Papercast leverages Generative AI to convert trending news articles into high-qu
 - [ ] **6.2 EC2 Launch Templates**: Configure templates for ASG (including IAM roles for S3/DynamoDB/Polly/Bedrock access).
 - [ ] **6.3 Load Balancer Setup**: Deploy ALB and configure target groups for the EC2 instances.
 
+---
+
+## Phase 6.5: Multi-Tenant Architecture Refactor
+*Goal: Evolve the single-user caching logic to safely support multiple distinct users while maintaining the global audio cache for cost efficiency.*
+
+### Identified Issues
+1. **Global Cache vs Personal Library**: Currently, when User A generates an article, DynamoDB sets `UserID = User A`. If User B generates the *exact same* article, the system uses the global cache to save money/time, but the database still points to User A. **Result**: The podcast never shows up in User B's personal library.
+2. **Deletion Cascades**: If an Admin deletes a globally cached podcast that 10 users listen to, it breaks the library for all 10 users.
+
+### Proposed Solution: The "Subscribers" Array
+Instead of tracking a single `UserID` string per podcast, we will track a mathematical Set of `subscribers`.
+
+#### [MODIFY] `backend/real_aws.py`
+- Modify `save_article_metadata` to use an `UpdateItem` command rather than `PutItem`. 
+- If the `ArticleID` is new, it creates the record and adds the `UserID` to a `subscribers` String Set (`SS`).
+- If the `ArticleID` already exists (Global Cache Hit), it simply appends the new `UserID` to the existing `subscribers` set.
+- Modify `get_user_library` to use `CONTAINS(subscribers, :user_id)` in the scan filter to accurately fetch any podcast a user has requested, regardless of who generated it first.
+
+#### [MODIFY] `backend/main.py`
+- Update the `/api/generate_audio` cache-hit logic. Right now, if there is a cache hit, the server immediately returns the audioURL. We need to add a small step here to run the `save_article_metadata` update *before* returning, ensuring the user is successfully added to the `subscribers` list even on a cache hit.
 
 ---
 

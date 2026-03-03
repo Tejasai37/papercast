@@ -14,6 +14,15 @@ app = FastAPI()
 app.mount("/static", StaticFiles(directory="backend/static"), name="static")
 templates = Jinja2Templates(directory="backend/templates")
 
+import re
+def format_script(text):
+    if not text: return ""
+    text = re.sub(r'\[HOST([^\]]*)\]:?\s*', lambda m: f'<span class="speaker-host">[HOST{m.group(1)}]</span>', text)
+    text = re.sub(r'\[EXPERT([^\]]*)\]:?\s*', lambda m: f'<span class="speaker-expert">[EXPERT{m.group(1)}]</span>', text)
+    return text
+
+templates.env.filters["format_script"] = format_script
+
 from backend.news_service import news_service
 from backend.real_aws import RealAWSService
 
@@ -194,10 +203,17 @@ async def generate_audio(request: Request, article_id: str):
     article_data = aws_service.get_article_metadata(cache_id)
     
     # Handle already completed podcasts (from DB)
-    if article_data and article_data.get("status") == "completed" and article_data.get("audio_url"):
+    if article_data and article_data.get("status") == "completed":
         print(f"DEBUG: Found already completed podcast for {cache_id}")
+        
+        # Hydrate the audio_url on demand based on our architectural pattern
+        audio_url = aws_service.get_audio_url(f"{cache_id}.mp3")
+        
+        # MULTI-TENANT FIX: Even on a cache hit, ensure this user is appended to the subscribers list
+        aws_service.save_article_metadata(cache_id, {}, user_id=user)
+        
         return {
-            "audio_url": article_data["audio_url"], 
+            "audio_url": audio_url, 
             "status": "cached",
             "summary": article_data.get("summary"),
             "key_points": article_data.get("key_points"),
@@ -247,11 +263,16 @@ async def generate_audio(request: Request, article_id: str):
             translated_points.append(aws_service.translate_text(point, target_language))
         insights['key_points'] = translated_points
     
-    # Generate Speech
-    audio_bytes = aws_service.generate_speech(insights['script'])
+    # Pass the target_language to trigger the correct native Polly voices
+    audio_bytes = aws_service.generate_speech(insights['script'], target_language)
     if not audio_bytes:
         print("DEBUG ERROR: Polly generation failed")
         return {"error": "Polly generation failed", "status": "failed"}
+
+    # Inject the voice names into the visual script for the UI (after audio generation)
+    host_voice, expert_voice = aws_service.get_voice_names(target_language)
+    visual_script = insights['script'].replace("[HOST]", f"[HOST ({host_voice})]").replace("[EXPERT]", f"[EXPERT ({expert_voice})]")
+    insights['script'] = visual_script
     
     file_name = f"{cache_id}.mp3"
     audio_url = aws_service.upload_audio(audio_bytes, file_name)
@@ -263,7 +284,6 @@ async def generate_audio(request: Request, article_id: str):
     aws_service.save_article_metadata(cache_id, {
         "article_id": article_id,  # Keep the original root ID
         "language": target_language, # Tag the language
-        "audio_url": audio_url,
         "status": "completed",
         "title": title,
         "source": source,

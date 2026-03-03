@@ -63,10 +63,8 @@ async function generateAudio(articleId) {
 
         // Format Script Dialogue
         const scriptHtml = data.script ? data.script
-            .replace(/\[HOST\]:/g, '<span class="speaker-host">HOST</span>')
-            .replace(/\[EXPERT\]:/g, '<span class="speaker-expert">EXPERT</span>')
-            .replace(/\[HOST\]/g, '<span class="speaker-host">HOST</span>')
-            .replace(/\[EXPERT\]/g, '<span class="speaker-expert">EXPERT</span>') : '';
+            .replace(/\[HOST([^\]]*)\]:?\s*/g, '<span class="speaker-host">[HOST$1]</span>')
+            .replace(/\[EXPERT([^\]]*)\]:?\s*/g, '<span class="speaker-expert">[EXPERT$1]</span>') : '';
 
         playerContainer.innerHTML = `
         <div class="radio-dashboard">

@@ -26,7 +26,7 @@
                 </thead>
                 <tbody>
                     {% for podcast in podcasts %}
-                    <tr style="border-bottom: 1px solid rgba(0,0,0,0.1);">
+                    <tr style="border-bottom: 1px solid rgba(0,0,0,0.1); vertical-align: middle;">
                         <td class="ps-4">
                             <div class="fw-bold text-truncate" style="max-width: 450px;">{{ podcast.title }}</div>
                             <small class="text-accent">{{ podcast.source }}</small>
@@ -35,18 +35,20 @@
                         </td>
                         <td><small>{{ podcast.time }}</small></td>
                         <td class="text-end pe-4">
-                            <a href="{{ podcast.audio_url }}" target="_blank" class="btn-dial py-1 px-3 me-2"
-                                style="text-decoration: none; font-size: 0.8rem;">
-                                <i class="bi bi-play-fill"></i> REPLAY
-                            </a>
-                            <form action="/admin/podcasts/delete/{{ podcast.ArticleID }}" method="POST"
-                                style="display:inline;"
-                                onsubmit="return confirm('WARNING: Permanent deletion. Continue?');">
-                                <button type="submit" class="btn-vintage py-1 px-2"
-                                    style="background: #8b0000; border-color: #8b0000; color: #fff; font-size: 0.8rem;">
-                                    <i class="bi bi-trash"></i>
+                            <div class="d-inline-flex gap-2 align-items-center">
+                                <button type="button" class="btn-dial py-1 px-3 m-0" data-bs-toggle="modal"
+                                    data-bs-target="#viewModal{{ podcast.ArticleID }}" style="font-size: 0.8rem;">
+                                    <i class="bi bi-eye-fill"></i> VIEW
                                 </button>
-                            </form>
+                                <form action="/admin/podcasts/delete/{{ podcast.ArticleID }}" method="POST"
+                                    class="m-0 p-0 shadow-none"
+                                    onsubmit="return confirm('WARNING: Permanent deletion. Continue?');">
+                                    <button type="submit" class="btn-vintage py-1 px-2 m-0"
+                                        style="background: #8b0000; border-color: #8b0000; color: #fff; font-size: 0.8rem;">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                     {% else %}
@@ -58,6 +60,106 @@
                 </tbody>
             </table>
         </div>
+
+        <!-- Modals for Viewing Podcasts -->
+        {% for podcast in podcasts %}
+        <div class="modal fade" id="viewModal{{ podcast.ArticleID }}" tabindex="-1"
+            aria-labelledby="viewModalLabel{{ podcast.ArticleID }}" aria-hidden="true"
+            style="font-family: var(--font-news);">
+            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content rounded-0 border border-dark" style="background: var(--paper-bg, #f4f1ea);">
+                    <div class="modal-header border-bottom border-dark"
+                        style="background: var(--bakelite-brown, #3b2f2f); color: var(--radio-gold, #d4af37);">
+                        <h5 class="modal-title" id="viewModalLabel{{ podcast.ArticleID }}"
+                            style="font-family: var(--font-console); letter-spacing: 1px;"><i
+                                class="bi bi-archive-fill me-2"></i> VAULT RECORD: {{ podcast.title[:40] }}...</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                            aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <h4 class="fw-bold mb-3" style="font-family: var(--font-header);">{{ podcast.title }}
+                                </h4>
+                                <span class="badge bg-dark mb-4">{{ podcast.source }}</span>
+                                <span class="badge bg-secondary mb-4 ms-2">{{ podcast.time }}</span>
+
+                                {% if podcast.nlp_sentiment %}
+                                {% set sentiment_class = 'bg-secondary' %}
+                                {% if podcast.nlp_sentiment == 'POSITIVE' %}
+                                {% set sentiment_class = 'bg-success' %}
+                                {% elif podcast.nlp_sentiment == 'NEGATIVE' %}
+                                {% set sentiment_class = 'bg-danger' %}
+                                {% elif podcast.nlp_sentiment == 'MIXED' %}
+                                {% set sentiment_class = 'bg-warning text-dark' %}
+                                {% endif %}
+                                <span class="badge {{ sentiment_class }} mb-4 ms-2">{{ podcast.nlp_sentiment }}
+                                    Sentiment</span>
+                                {% endif %}
+
+                                <div class="p-4 border border-dark mb-4" style="background: rgba(0,0,0,0.03);">
+                                    <h6 class="text-uppercase fw-bold pb-2 border-bottom border-dark mb-3 small"
+                                        style="letter-spacing: 1px;">TLDR</h6>
+                                    <p class="fw-bold mb-4" style="font-size: 1.1rem; line-height: 1.4;">{{ podcast.tldr
+                                        or 'Summary pending...' }}</p>
+
+                                    <h6 class="text-uppercase fw-bold pb-2 border-bottom border-dark mb-3 mt-4 small"
+                                        style="letter-spacing: 1px;">Full Dispatch</h6>
+                                    <p class="mb-4">{{ podcast.summary }}</p>
+
+                                    {% if podcast.key_points %}
+                                    <h6 class="text-uppercase fw-bold pb-2 border-bottom border-dark mb-3 mt-4 small"
+                                        style="letter-spacing: 1px;">Key Dispatches</h6>
+                                    <ul class="mb-0" style="font-family: var(--font-news);">
+                                        {% for point in podcast.key_points %}
+                                        <li>{{ point }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                    {% endif %}
+
+                                    {% if podcast.nlp_entities or podcast.nlp_key_phrases %}
+                                    <h6 class="text-uppercase fw-bold pb-2 border-bottom border-dark mb-3 mt-4 small"
+                                        style="letter-spacing: 1px;">AI NLP Extraction</h6>
+                                    <div class="bg-white p-3 border border-light shadow-sm">
+                                        {% if podcast.nlp_entities %}
+                                        <div class="mb-2"><strong>Entities:</strong><br />
+                                            {% for entity in podcast.nlp_entities %}
+                                            <span class="badge bg-secondary me-1 mb-1">{{ entity }}</span>
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                        {% if podcast.nlp_key_phrases %}
+                                        <div class="mt-2"><strong>Keywords:</strong><br />
+                                            {% for phrase in podcast.nlp_key_phrases %}
+                                            <span class="badge border border-dark text-dark me-1 mb-1"
+                                                style="background:transparent;">{{ phrase }}</span>
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="p-4 border border-dark mb-2" style="background: rgba(0,0,0,0.03);">
+                                    <h6 class="text-uppercase fw-bold pb-2 border-bottom border-dark mb-3 small"
+                                        style="letter-spacing: 1px;">Audio Transmission</h6>
+                                    <audio controls class="w-100 mt-2" style="height: 45px;">
+                                        <source src="{{ podcast.audio_url }}" type="audio/mpeg">
+                                        Your browser does not support the audio element.
+                                    </audio>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top border-dark">
+                        <button type="button" class="btn btn-outline-dark rounded-0 px-4 fw-bold"
+                            data-bs-dismiss="modal" style="font-family: var(--font-console);">CLOSE VAULT</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
     </div>
 </div>
 {% endblock %}
