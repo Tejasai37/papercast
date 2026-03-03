@@ -6,12 +6,12 @@ This document provides a simple, high-level overview of the systems required to 
 
 ```mermaid
 flowchart TD
-    %% Define Styles
-    classDef client fill:#f9f9f9,stroke:#333,stroke-width:2px;
-    classDef server fill:#d5e8d4,stroke:#82b366,stroke-width:2px;
-    classDef awsAuth fill:#fff2cc,stroke:#d6b656,stroke-width:2px;
-    classDef awsAI fill:#dae8fc,stroke:#6c8ebf,stroke-width:2px;
-    classDef awsStorage fill:#ffe6cc,stroke:#d79b00,stroke-width:2px;
+    %% Define Styles (Removed hardcoded colors for native Light/Dark Mode support)
+    classDef client stroke-width:2px;
+    classDef server stroke-width:2px;
+    classDef awsAuth stroke-width:2px,stroke-dasharray: 5 5;
+    classDef awsAI stroke-width:2px;
+    classDef awsStorage stroke-width:2px;
 
     %% Nodes
     Browser["Web Browser (User)"]:::client
