@@ -61,6 +61,92 @@ uvicorn backend.main:app --reload --port 8080
 ```
 Access the application at `http://localhost:8080`.
 
+## Cloud Deployment (AWS EC2)
+
+For production deployment, PaperCast is designed to run on a single Amazon Linux 2023 instance utilizing a systemd-managed Gunicorn application server and an Nginx reverse proxy.
+
+### 1. EC2 Instance Setup
+1.  Launch a `t3.micro` or `t2.micro` Amazon Linux 2023 EC2 instance.
+2.  Assign an IAM Role to the instance with full access to **S3, DynamoDB, Bedrock, Polly, Comprehend, and Translate**.
+3.  Configure the Security Group to allow inbound traffic on ports `22` (SSH) and `80` (HTTP).
+
+### 2. Environment Configuration
+SSH into your instance and install the required dependencies:
+```bash
+sudo dnf update -y
+sudo dnf install -y python3.11 python3.11-pip git nginx
+```
+Clone the repository and set up your virtual environment:
+```bash
+git clone [YOUR_REPO_URL] papercast
+cd papercast
+python3.11 -m venv papercast_venv
+source papercast_venv/bin/activate
+pip install -r requirements.txt
+```
+Create your `.env` file (Do **not** include AWS access keys, as the attached IAM role provides credentials):
+```env
+NEWS_API_KEY=your_key
+USE_REAL_AWS=true
+AWS_REGION=us-east-1
+S3_BUCKET_NAME=your_bucket
+DYNAMODB_TABLE_NAME=PapercastCache
+COGNITO_USER_POOL_ID=your_pool_id
+COGNITO_CLIENT_ID=your_client_id
+```
+
+### 3. Application Server (Gunicorn)
+Create a systemd service file to manage the FastAPI application:
+```bash
+sudo nano /etc/systemd/system/papercast.service
+```
+Add the following configuration (adjusting for your specific user/path):
+```ini
+[Unit]
+Description=Gunicorn instance to serve Papercast
+After=network.target
+
+[Service]
+User=ec2-user
+Group=ec2-user
+WorkingDirectory=/home/ec2-user/papercast
+Environment="PATH=/home/ec2-user/papercast/papercast_venv/bin"
+ExecStart=/home/ec2-user/papercast/papercast_venv/bin/gunicorn --workers 3 --bind 0.0.0.0:8000 backend.main:app -k uvicorn.workers.UvicornWorker
+
+[Install]
+WantedBy=multi-user.target
+```
+Enable and start the service:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now papercast
+```
+
+### 4. Reverse Proxy (Nginx)
+Configure Nginx to route external port 80 traffic to the internal Gunicorn server:
+```bash
+sudo nano /etc/nginx/conf.d/papercast.conf
+```
+Add the routing block:
+```nginx
+server {
+    listen 80;
+    server_name _;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+Enable and start Nginx:
+```bash
+sudo systemctl restart nginx
+sudo systemctl enable nginx
+```
+Access your IP address via your browser port 80, and the app will respond!
+
 ## Security
 *   **Private S3 Buckets**: Audio files cannot be accessed directly; the backend generates a short-lived pre-signed URL for streaming.
 *   **API Protection**: All generation endpoints (`/api/generate_audio`) require a valid Cognito session cookie to restrict unauthorized AWS SDK calls.
