@@ -6,34 +6,39 @@ This document provides a simple, high-level overview of the systems required to 
 
 ```mermaid
 flowchart TD
-    %% Nodes
-    Browser["Web Browser (User)"]
-    EC2["Amazon EC2 Server<br>(Nginx + FastAPI)"]
+    %% User Entry
+    Start([User visits PaperCast]) --> Login{Logged In?}
     
-    Cognito["Amazon Cognito<br>(Login & Roles)"]
+    %% Auth
+    Login -- No --> Cognito[Amazon Cognito handles Secure Login]
+    Cognito --> Dashboard
+    Login -- Yes --> Dashboard([User opens Dashboard])
     
-    Bedrock["Amazon Bedrock<br>(Generates Script)"]
-    Polly["Amazon Polly<br>(Creates Audio)"]
-    Translate["Amazon Translate<br>(Language Localization)"]
-    Comprehend["Amazon Comprehend<br>(Text Analysis)"]
+    %% Input
+    Dashboard --> Request[User pastes a News Article URL]
     
-    DynamoDB["Amazon DynamoDB<br>(Database Cache)"]
-    S3["Amazon S3<br>(Audio Files Sandbox)"]
-
-    %% Core Flow
-    Browser -->|1. Visits Website| EC2
+    %% Cache Check
+    Request --> Cache{Check DynamoDB Cache}
     
-    EC2 <-->|2. Authenticates| Cognito
+    %% Cache Hit
+    Cache -- Audio Already Exists --> Deliver[Deliver existing S3 Audio Link]
     
-    EC2 -->|3. Analyzes Text| Comprehend
-    EC2 -->|4. Writes Podcast| Bedrock
-    EC2 -->|5. Translates Text| Translate
-    EC2 -->|6. Generates MP3| Polly
+    %% Cache Miss Flow (AI Pipeline)
+    Cache -- New Article --> Comprehend[Amazon Comprehend analyzes themes & sentiment]
+    Comprehend --> Bedrock[Amazon Bedrock writes the Radio Script]
+    Bedrock --> Translate{Translate?}
+    Translate -- Yes --> AmazonTranslate[Amazon Translate converts script to local language]
+    Translate -- No --> Polly
+    AmazonTranslate --> Polly
+    Polly[Amazon Polly synthesizes text into Neural Speech MP3]
     
-    EC2 -->|7. Saves Podcast Details| DynamoDB
-    EC2 -->|8. Saves MP3 File| S3
+    %% Storage
+    Polly --> SaveDb[Save Podcast details to DynamoDB]
+    SaveDb --> SaveS3[Save MP3 file to Amazon S3]
+    SaveS3 --> Deliver
     
-    EC2 -->|9. Returns Audio Player| Browser
+    %% Output
+    Deliver --> Player([User listens to Podcast!])
 ```
 
 ## How It Works (Step-by-Step)
