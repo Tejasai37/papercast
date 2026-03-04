@@ -17,12 +17,73 @@
 *   **Enterprise usage**: An organization deploys the platform internally to automatically summarize and narrate lengthy industry reports and competitor analyses for their executive team.
 
 ## 4. TECHNICAL ARCHITECTURE OVERVIEW
+
+### High-level Architecture Diagram
+
+```mermaid
+flowchart TB
+    %% External Interfaces
+    Client((Web Browser))
+    GNews(("GNews API<br>(Live Headlines)"))
+
+    %% AWS Cloud Environment
+    subgraph AWS["AWS Cloud Environment (us-east-1)"]
+        direction TB
+
+        subgraph Network["Virtual Private Cloud (Public Subnet)"]
+            subgraph Security_Group["Security Perimiter"]
+                %% Core Application Host
+                EC2["Amazon EC2 Instance<br>(Amazon Linux 2023)<br>═══════════<br>- Nginx Proxy<br>- Gunicorn<br>- FastAPI"]
+            end
+        end
+
+        subgraph Authentication ["Identity Layer"]
+            Cognito["Amazon Cognito User Pool<br>(JWT Issuance & RBAC)"]
+        end
+
+        subgraph Storage["Serverless Storage Layer"]
+            DynamoDB[("Amazon DynamoDB<br>(Metadata & Library Cache)")]
+            S3[("Amazon S3<br>(Protected MP3 Storage)")]
+        end
+
+        subgraph AI_Pipeline["AWS AI Pipeline (Boto3 Orchestration)"]
+            direction LR
+            Comprehend["Amazon Comprehend<br>(Sentiment, Key Phrases)"]
+            Bedrock["Amazon Bedrock<br>(Podcast AI Scripting)"]
+            Translate["Amazon Translate<br>(Native Language Conversion)"]
+            Polly["Amazon Polly<br>(Neural Text-to-Speech)"]
+            
+            %% Pipeline Sequence
+            Comprehend --> Bedrock
+            Bedrock --> Translate
+            Translate --> Polly
+        end
+    end
+
+    %% Network & App Connections
+    Client <-->|REST / HTML5| EC2
+    EC2 -->|Synchronous API Fetch| GNews
+    Client <-->|Token Authorization| Cognito
+
+    %% Storage Interactions
+    EC2 <-->|CRUD & SS Checks| DynamoDB
+    EC2 -->|Creates Audio Object| S3
+    S3 -.->|Pre-Signed Streaming URL| Client
+
+    %% Engine Interactions
+    EC2 <-->|IAM Insance Profile Request| AI_Pipeline
+```
+
+### Component Interaction & Data/Request Flow
 The application adopts a 3-tier Serverless-integrated architecture designed for extreme cost efficiency and scalability on AWS.
 
 *   **Frontend layer**: Server-Side Rendered (SSR) HTML5, CSS3, and Vanilla JavaScript delivered via Jinja2 Templates.
 *   **Backend layer**: High-performance FastAPI (Python) server handling asynchronous routing, API orchestration via Boto3, and JWT middleware.
 *   **Database layer**: Amazon DynamoDB serves as the NoSQL metadata vault and tracks a multi-tenant String Set (`SS`) cache repository of user libraries. Amazon S3 operates as the object storage sandbox for MP3 audio artifacts.
-*   **External APIs / Services**: GNews API for live article fetching. AWS AI Pipeline: Comprehend (NLP), Bedrock (Summarization Scripting), Translate (Localization), Polly (Speech Synthesis). Amazon Cognito for Authentication.
+*   **External APIs / Services**:
+    *   **GNews API**: Fetches live, trending news articles directly from external HTTP sources.
+    *   **AWS AI Pipeline**: Comprehend (NLP Sentiment/Entities), Bedrock (Summarization via Nova Micro), Translate (Localization), and Polly (Speech Synthesis).
+    *   **Amazon Cognito**: Handles user sessions and authorization.
 *   **Deployment environment**: A single Amazon Linux 2023 EC2 instance utilizing a systemd-managed Gunicorn application server and an Nginx reverse proxy.
 
 ## 5. PREREQUISITES
@@ -44,12 +105,16 @@ The application adopts a 3-tier Serverless-integrated architecture designed for 
 *   **Cloud Hardware**: Amazon EC2 `t3.micro` or `t2.micro` instance.
 
 ## 6. PRIOR KNOWLEDGE REQUIRED
-To successfully implement and maintain this system, the following concepts are required:
-*   **Programming language knowledge**: Advanced Python (Async logic, decorators) and fundamental JavaScript.
-*   **Framework basics**: Understanding of FastAPI routing, dependency injection, and Jinja2 templating.
-*   **Database fundamentals**: NoSQL concepts, specifically DynamoDB Partition Keys and String Sets (`SS`).
-*   **Networking / Cloud concepts**: REST API interactions, IAM Roles, pre-signed URLs, Nginx reverse proxy configurations, and basic Linux system administration.
-*   **AI/ML fundamentals**: Understanding of Foundational Models, prompt engineering (system vs. user prompts), and text-to-speech engines.
+To successfully implement and maintain this system, the following technologies and concepts must be understood:
+*   **Programming Languages**: Python (for backend logic and AI orchestration) and JavaScript (for vanilla frontend interactivity).
+*   **Web Frameworks & Servers**: FastAPI (for backend API routing), Gunicorn (production application server), and Nginx (reverse proxy routing).
+*   **External APIs**: Integration with RESTful HTTP services like the **GNews API** to fetch live article payloads.
+*   **AWS Services**: 
+    *   **Amazon EC2**: Virtual server administration and deployment.
+    *   **Amazon S3**: Object storage and pre-signed streaming URLs.
+    *   **Amazon DynamoDB**: NoSQL database schema and caching logic.
+    *   **Amazon Cognito**: Identity management and JWT token authentication.
+    *   **AWS AI Services**: Amazon Bedrock (LLM scripting), Amazon Polly (Text-to-Speech), Amazon Comprehend (NLP Sentiment/Entities), and Amazon Translate (Localization).
 
 ## 7. PROJECT OBJECTIVES
 *   **Technical objectives**: Build a seamless data pipeline that orchestrates multiple disparate AI services (NLP, LLM, Translation, TTS) into a single, cohesive API endpoint.
