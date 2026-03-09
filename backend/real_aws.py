@@ -433,10 +433,9 @@ class RealAWSService:
             if secret_hash:
                 auth_params['SECRET_HASH'] = secret_hash
 
-            response = self.cognito.admin_initiate_auth(
-                UserPoolId=self.config["user_pool_id"],
+            response = self.cognito.initiate_auth(
                 ClientId=self.config["client_id"],
-                AuthFlow='ADMIN_NO_SRP_AUTH',
+                AuthFlow='USER_PASSWORD_AUTH',
                 AuthParameters=auth_params
             )
             return response['AuthenticationResult']
