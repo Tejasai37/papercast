@@ -221,6 +221,10 @@ sudo systemctl status papercast
 ```bash
 sudo cp /home/ec2-user/papercast/deploy/nginx.conf /etc/nginx/conf.d/papercast.conf
 ```
+- By default, Amazon Linux 2023 blocks all users (including the `nginx` reverse proxy service) from viewing the `ec2-user` home directory. Run this command to grant `nginx` the necessary 'execute/traverse' permissions so your static CSS pages will load:
+```bash
+chmod 755 /home/ec2-user && chmod 755 /home/ec2-user/papercast
+```
 - Restart Nginx:
 ```bash
 sudo systemctl restart nginx

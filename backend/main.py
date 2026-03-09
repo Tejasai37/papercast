@@ -66,7 +66,20 @@ def signup_page(request: Request):
 async def signup(request: Request, username: str = Form(...), password: str = Form(...), email: str = Form(...)):
     aws_service = RealAWSService()
     success = aws_service.sign_up_user(username, password, email)
-    if success:
+    if success == "EXISTS":
+        # Seamless UX: Try to log them in automatically if they entered the right password
+        auth_result = aws_service.authenticate_user(username, password)
+        if auth_result:
+            groups = aws_service.get_user_groups(username)
+            is_admin = "admins" in groups
+            response = RedirectResponse(url="/admin" if is_admin else "/dashboard", status_code=303)
+            response.set_cookie(key="session", value=username, httponly=True)
+            response.set_cookie(key="id_token", value=auth_result['IdToken'], httponly=True)
+            response.set_cookie(key="is_admin", value="true" if is_admin else "false", httponly=True)
+            return response
+        else:
+            return templates.TemplateResponse("signup.html", {"request": request, "error": "Account exists! Please use the Log In page."})
+    elif success:
         return RedirectResponse(url="/login?msg=Signup+successful", status_code=303)
     else:
         return templates.TemplateResponse("signup.html", {"request": request, "error": "Cognito signup failed"})

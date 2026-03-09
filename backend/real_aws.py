@@ -462,10 +462,13 @@ class RealAWSService:
                 Password=password,
                 Permanent=True
             )
-            return response
+            return True
         except ClientError as e:
+            error_code = e.response['Error']['Code']
+            if error_code == 'UsernameExistsException':
+                return "EXISTS"
             print(f"Cognito Sign-up Error: {e}")
-            return None
+            return False
 
     def get_user_groups(self, username):
         """Fetches the groups a user belongs to in Cognito"""
